@@ -128,3 +128,6 @@ else
     do_something_else();
 
 gcc 在碰到else前面的“；”时就认为if语句已经结束，因而后面的else不在if语句中。而采用do{} while(0)的定义，在任何情况下都没有问题。而改为 #difne DO(a,b) do{a+b;a++;}while(0) 的定义则在任何情况下都不会出错
+
+21: 32bit数据访问
+#define REG32(X) (*(volatile unsigned int *)(X))
