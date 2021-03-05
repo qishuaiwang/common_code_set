@@ -131,3 +131,9 @@ gcc 在碰到else前面的“；”时就认为if语句已经结束，因而后�
 
 21: 32bit数据访问
 #define REG32(X) (*(volatile unsigned int *)(X))
+
+22:C语言中预定义符 __FILE__, __LINE__, __FUNCTION__, __DATE__, __TIME__ 的使用演示
+void testFunc(void){
+    printf("File = %s\nLine = %d\nFunc=%s\nDate=%s\nTime=%s\n", 
+        __FILE__, __LINE__, __FUNCTION__, __DATE__, __TIME__);
+}
