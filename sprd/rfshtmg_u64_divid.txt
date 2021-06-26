@@ -1,0 +1,51 @@
+#define ROUNDUP(x, y) ((x)/(y) + (((x)%(y)) ? 1 : 0))
+#define MAX(a, b) (((a)>(b)) ? (a) : (b))
+#define G_MULTIPLE(x) ((1000ull * 1000 * 1000 * x))
+
+void timing_update_according_density (uint64 umctl_reg_addr_base)
+{
+	uint32 pb, current_p, i, j;
+	uint64 value, rank0_density, datarate, t_ck, t_dfi_clk, t_rfcab, t_rfcpb, t_xsr;
+
+	pb = reg32_bits_read(umctl_reg_addr_base + uMCTL2_RFSHCTL0_ADDR, 2, 1);
+
+	rank0_density = sdram_info.mr8_info[0].density;
+	if (rank0_density < DDR_3Gb) {
+		t_rfcab = 130;
+		t_rfcpb = 60;
+	} else if (rank0_density < DDR_6Gb) {
+		t_rfcab = 180;
+		t_rfcpb = 90;
+	} else if (rank0_density < DDR_12Gb) {
+		t_rfcab = 280;
+		t_rfcpb = 140;
+	} else if (rank0_density < DDR_16Gb) {
+		t_rfcab = 380;
+		t_rfcpb = 190;
+	} else {
+		DDR_LOG(DDR_LOG_ERR, "Invalid density !!!\r\n");
+	}
+
+	for (i = 0; i < DFS_NUM; i++) {
+		for (j = 0; j < PS_MAX; j++) {
+			if (ddr_pstate_table[j].pstate == i) {
+				datarate = ddr_pstate_table[j].datarate;
+				t_ck = G_MULTIPLE(1000/(datarate/2)); //unit:ns
+				t_dfi_clk = G_MULTIPLE(1000*2/(datarate/2)); //unit:ns
+				if (1 == pb) {
+					value = ROUNDUP(G_MULTIPLE(t_rfcpb) /2, t_ck);
+					reg32_bits_write(umctl_reg_addr_base + uMCTL2_RFSHTMG_ADDR_F(i), 0, 9, value);
+				} else {
+					value = ROUNDUP(G_MULTIPLE(t_rfcab) /2, t_ck);
+					reg32_bits_write(umctl_reg_addr_base + uMCTL2_RFSHTMG_ADDR_F(i), 0, 9, value);
+				}
+
+				t_xsr = MAX(G_MULTIPLE(((t_rfcab*10)+75))/10, 2*t_ck);
+				value = (ROUNDUP((t_xsr / 2), t_ck));
+				reg32_bits_write(umctl_reg_addr_base + uMCTL2_DRAMTMG14_ADDR_F(i), 0, 11, value);
+
+				break;
+			}
+		}
+	}
+}
