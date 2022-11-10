@@ -147,25 +147,5 @@ int main()
     }
 
 
-#if 0
-   fptr = fopen("test-1.vhx", "w+t");
-   if(fptr == NULL)
-   {
-      printf("Error!");
-      exit(1);
-   }
-   k = 0;
-    for (i = 0; i < TEST_BYTE_NUM / banks; i += (BYTE_ALIGN(width) * banks)) {
-        for (j = 0; j < banks; j++) {
-            sprintf(str++, "%2x", (2 + i + j));
-            // sentence[k++] = itoa(i + j + 2);
-        }
-   }
-//    printf("输入字符串:\n");
-//    fgets(sentence, (sizeof sentence / sizeof sentence[0]), stdin);
- 
-   fprintf(fptr,"%s", sentence);
-   fclose(fptr);
-#endif 
    return 0;
 }
