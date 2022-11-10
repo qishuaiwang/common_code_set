@@ -38,9 +38,9 @@ int data_swap (__uint8_t *data, __uint32_t num, __uint32_t sub_num)
     return 0;
 }
 
-int main()
+int mahhin()
 {
-    #define TEST_DATA_NUM 256
+    #define TEST_DATA_NUM 25 * 1024
     #define DATA_BYTES 4
     #define BYTE_TO_ASCII_COL 2
     #define BYTE_ALIGN(x) ((x >> 3))
@@ -124,6 +124,8 @@ int main()
                 memcpy(p_file_buf + l, p_str_buf + position, BYTE_ALIGN(width) * BYTE_TO_ASCII_COL);
                 data_swap (p_file_buf + l, BYTE_ALIGN(width) * BYTE_TO_ASCII_COL, BYTE_TO_ASCII_COL);
                 l += BYTE_ALIGN(width) * BYTE_TO_ASCII_COL;
+                // format to vhx
+                *(p_file_buf + l++) = '\n';
             } else {
                 __uint32_t position = i + BYTE_ALIGN(width) * BYTE_TO_ASCII_COL * k;
                 for (j = 0; j < BYTE_ALIGN(width) * BYTE_TO_ASCII_COL; j++) {
@@ -131,6 +133,9 @@ int main()
                 }
             }
         }
+        
+
+        //write to file
         fptr = fopen(file_name, "w+t");
         if(fptr == NULL)
         {
