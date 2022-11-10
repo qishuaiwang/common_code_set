@@ -38,7 +38,7 @@ int data_swap (__uint8_t *data, __uint32_t num, __uint32_t sub_num)
     return 0;
 }
 
-int mahhin()
+int main()
 {
     #define TEST_DATA_NUM 25 * 1024
     #define DATA_BYTES 4
