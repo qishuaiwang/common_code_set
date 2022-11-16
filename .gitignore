@@ -1,2 +1,4 @@
 # ignore executable file
 *.vhx
+*.o
+*.bak

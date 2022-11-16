@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // "preLaunchTask": "Build",
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/C/PXP_DDR_DB/main",
+            "args": ["-l", "1", "-i", "test", "-a", "0x4000000048"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            // "cwd": "${workspaceFolder}/test/C/PXP_DDR_DB/",
+            // "requireExactSource": "${workspaceFolder}/test/C/PXP_DDR_DB/",
+            "environment": [],
+            // "internalConsoleOptions": "openOnSessionStart",
+            "externalConsole": false,
+            // "symbolSearchPath": "${workspaceFolder}/test/C/PXP_DDR_DB/",
+            "symbolLoadInfo": {
+                "loadAll": true,
+                "exceptionList": "args_analysis.o, format_convert.o, main.o"
+            },
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                // {
+                    // "description":  "Set Disassembly Flavor to Intel",
+                    // "text": "-gdb-set disassembly-flavor intel",
+                    // "ignoreFailures": true
+                // }
+            ]
+        }
+
+    ]
+}
