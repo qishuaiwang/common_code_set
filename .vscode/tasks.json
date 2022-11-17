@@ -3,17 +3,17 @@
         {
             "type": "cppbuild",
             "label": "Build",
-            /* "command": "/usr/bin/gcc-7",
+            "command": "/usr/bin/gcc-7",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
-            ],*/
-            "command": "make",
-            "args": [
             ],
+            // "command": "make",
+            // "args": [
+            // ],
             "options": {
                 "cwd": "${fileDirname}"
             },
