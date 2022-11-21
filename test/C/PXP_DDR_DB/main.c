@@ -36,6 +36,7 @@ void parse_objects(char *filename, __uint32_t *addrmap)
         cJSON *addrmap9 = cJSON_GetObjectItem(address_map_cfg, "ADDRMAP9");
         cJSON *addrmap10 = cJSON_GetObjectItem(address_map_cfg, "ADDRMAP10");
         cJSON *addrmap11 = cJSON_GetObjectItem(address_map_cfg, "ADDRMAP11");
+        #if 0
         printf("%#lx\n", strtoul(addrmap1->valuestring, &p_end, 16));
         printf("%#lx\n", strtoul(addrmap3->valuestring, &p_end, 16));
         printf("%#lx\n", strtoul(addrmap4->valuestring, &p_end, 16));
@@ -46,6 +47,7 @@ void parse_objects(char *filename, __uint32_t *addrmap)
         printf("%#lx\n", strtoul(addrmap9->valuestring, &p_end, 16));
         printf("%#lx\n", strtoul(addrmap10->valuestring, &p_end, 16));
         printf("%#lx\n", strtoul(addrmap11->valuestring, &p_end, 16));
+        #endif
 
         addrmap[0] = strtoul(addrmap1->valuestring, &p_end, 16);
         addrmap[1] = strtoul(addrmap3->valuestring, &p_end, 16);
@@ -107,7 +109,11 @@ int main(int argc, char** argv) {
         0x19, 0x3f0903, 0x101, 0x1f020005, 0x4020500, 0x1f080808, 0x8080808, 0x8080808, 0x8080808, 0x808
     };
     parse_objects(json_file_name, addrmap);
+    #if 0
     for (int i = 0; i < sizeof(addrmap)/sizeof(__uint32_t); i++) {
         printf("addrmap[%d]:%#x\n", i, addrmap[i]);
     }
+    #endif
+
+    hif_addr_update (addrmap);
 }
