@@ -1,9 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "args_analysis.h"
 #include "linked_list.h"
 #include "data_repackage.h"
 #include "cJSON.h"
+
+/* file info create */
+void free_data(void *useless_data)
+{
+    struct FILE_INFO *tmp = useless_data;
+    free(tmp);
+}
+
+int equals(const void *x, const void *y) {
+    struct FILE_INFO *a = (struct FILE_INFO *)x;
+    struct FILE_INFO *b = (struct FILE_INFO *)y;
+    return  a->sys_num == b->sys_num &&
+            a->rank_num == b->rank_num &&
+            a->mem_core_num == b->mem_core_num &&
+            a->ch_name == b->ch_name &&
+            a->start_offset == b->start_offset &&
+            a->index == b->index &&
+            a->increasing == b->increasing;
+}
 
 /* Parse a addressmp to array. */
 void parse_objects(char *filename, __uint32_t *addrmap)
@@ -63,8 +83,46 @@ void parse_objects(char *filename, __uint32_t *addrmap)
    
 }
 
+/*************************************************/
+/* DDR0  0x30_0000_0000  0 :{bit38,bit35:bit34} */
+/* DDR1  0x34_0000_0000  1 :{bit38,bit35:bit34} */
+/* DDR2  0x38_0000_0000  2 :{bit38,bit35:bit34} */
+/* DDR3  0x3C_0000_0000  3 :{bit38,bit35:bit34} */
+/* DDR4  0x40_0000_0000  4 :{bit38,bit35:bit34} */
+/* DDR5  0x44_0000_0000  5 :{bit38,bit35:bit34} */
+/*                                              */
+/* DDR01 0x10_0000_0000  0 :{bit37,bit35}       */
+/* DDR23 0x18_0000_0000  1 :{bit37,bit35}       */
+/* DDR45 0x20_0000_0000  2 :{bit37,bit35}       */
+/************************************************/
+#define BIT38_35_34_JOINT(x) (((x >> 34) & (0x3)) | ((x >> 36) & (0x4)))
+#define BIT37_34_JOINT(x) (((x >> 34) & (0x1)) | ((x >> 36) & (0x2)))
+int used_sys_detect(struct FILE_INFO *p_file_info, __uint32_t *p)
+{
+    __uint32_t *ddrsys_set = p;
+    __uint32_t ddrsys_start = 0, ddrsys_end = 0;
+    if (p_file_info->interleave_size) {
+        ddrsys_start = BIT37_34_JOINT(p_file_info->img_start_address);
+        ddrsys_end = BIT37_34_JOINT(p_file_info->img_end_address);
+        for (int i = ddrsys_start; i <= ddrsys_end; i++) {
+            *(ddrsys_set + i) = *(ddrsys_set + i + 1) = 1;
+        }
+    } else {
+        ddrsys_start = BIT38_35_34_JOINT(p_file_info->img_start_address);
+        ddrsys_end = BIT38_35_34_JOINT(p_file_info->img_end_address);
+        for (int i = ddrsys_start; i <= ddrsys_end; i++) {
+            *(ddrsys_set + i) = 1;
+        }
+    }
+}
+
 int main(int argc, char** argv) {
+    char *input_file_name = "ddr_img.bin";
     char *json_file_name = "ddr_address_map.json";
+    __uint64_t load_address = 0x3000000000;
+    __uint8_t iecc = 0x0;
+    __uint32_t interleave_size = 256;
+    struct FILE_INFO head_file_info = {0};
     // Instantiate a new ArgParser instance.
     ArgParser* parser = ap_new();
     if (!parser) {
@@ -77,6 +135,7 @@ int main(int argc, char** argv) {
 
     // Register a flag and a string-valued and a integer-valued option.
     ap_flag(parser, "iecc e");
+    ap_int_opt(parser, "interleave l", 256);
     ap_str_opt(parser, "input_file i", "ddrc.bin");
     ap_str_opt(parser, "json_file j", "ddr_address_map.json");
     ap_long_opt(parser, "address a", 0x3000000000);
@@ -87,14 +146,36 @@ int main(int argc, char** argv) {
     }
 
     // This debugging function prints the parser's state.
-    ap_print(parser);
+    // ap_print(parser);
 
-    printf("Inline ecc is %d\n", ap_found(parser, "e"));
-    printf("Input_file is %s\n", ap_str_value(parser, "input_file"));
-    printf("Json file is %s\n", ap_str_value(parser, "json_file"));
-    printf("Load address is %#lx\n", ap_long_value(parser, "a"));
+    // printf("Inline ecc is %d\n", ap_found(parser, "e"));
+    // printf("Input_file is %s\n", ap_str_value(parser, "input_file"));
+    // printf("Json file is %s\n", ap_str_value(parser, "json_file"));
+    // printf("Load address is %#lx\n", ap_long_value(parser, "a"));
 
+    load_address = ap_long_value(parser, "a");
+    input_file_name = ap_str_value(parser, "input_file");
     json_file_name = ap_str_value(parser, "json_file");
+    head_file_info.iecc = ap_found(parser, "e");
+    if (load_address > 0x2c00000000) {
+        head_file_info.interleave_size = 0;
+    } else {
+        head_file_info.interleave_size = ap_int_value(parser, "interleave");
+    }
+    FILE * file_tmp = fopen(input_file_name, "rb");
+    __uint64_t file_byte_size;
+    if (file_tmp == NULL) {
+        perror("Input file open failed\n");
+    } else {
+        head_file_info.img_file = file_tmp;
+        fseek(file_tmp, 0, SEEK_SET);
+        file_byte_size = ftell(file_tmp);
+        if (0 == file_byte_size) {
+            perror("Input file is NULL!\n");
+        }
+    }
+    head_file_info.img_start_address = load_address;
+    head_file_info.img_end_address = load_address + file_byte_size;
     // Free the parser's memory.
     ap_free(parser);
 
@@ -115,5 +196,29 @@ int main(int argc, char** argv) {
     }
     #endif
 
-    hif_addr_update (addrmap);
+    hif_addr_update(addrmap);
+    __uint32_t ddr_sys_set[DDR_SYS_NUM] = {0};
+    used_sys_detect(&head_file_info, ddr_sys_set);
+    linkedlist out_file_list = {0};
+    linkedlist *p_out_file_list = &out_file_list;
+    list_init(&p_out_file_list);
+    for(int i = 0; i < DDR_SYS_NUM; i++) {
+        if(ddr_sys_set[i]) {
+            head_file_info.sys_num = i;
+        }
+        for (int j = 0; j < DDR_RANK_NUM; j++) {
+            head_file_info.rank_num = j;
+            for (int l = 0; l < 2; l++) {
+                strcpy(head_file_info.ch_name, l ? "B" : "A");
+                for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
+                    head_file_info.mem_core_num = k;
+                    __uint32_t memcore_index = 0;
+                    do{
+                        memcore_file_create(p_out_file_list, &head_file_info, memcore_index);
+                    } while(memcore_index++ < DDR_MEMCORE_INDEX_MAX);
+                }
+            }
+        }
+    }
+    list_destroy(p_out_file_list, free_data);
 }

@@ -2,11 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/cdefs.h>
 #include "data_repackage.h"
+#include "linked_list.h"
 
-char *load_string = "memory -load %%readmemh ";
+char *load_string = "memory -load %%readmemh %n";
 char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr5_16GB_rank%d_chan%s.memcore%d";
 char *file_string = "-file DDRsys%d_rank%d_chan%c_memcore%d_%d\n";
+char *file_name = "DDRsys%d_rank%d_chan%c_memcore%d_%d";
+
+/* DDR address in SOC map */
+__uint64_t ddr_sys_base_addr[2][DDR_SYS_NUM] = {
+    {0x3000000000, 0x3400000000, 0x3800000000, 0x3c00000000, 0x4000000000, 0x4400000000}, // none interleave space
+    {0x1000000000, 0x1000000000, 0x1800000000, 0x1800000000, 0x2000000000, 0x2000000000}, // interleave space
+};
+/*****************************************************/
+/* Just for RBC module address configuration         */
+/* Do not change the sequence, or result will wrong. */
+/*****************************************************/
 struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     // {"CH" ,  -1,  -1,  1,  0},
     {"B0" ,  0,  0,  2,  0},
@@ -42,6 +55,8 @@ struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     {"MemCore", 30, 30, 32,  0},
     {"Rank", 31, 31, 33,  0},
 };
+_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GBIT_BIT_NUM,
+                "Please make sure array size not over defined.");
 enum data_repackage_index
 {
     B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, BA0, BA1, BG0, BG1, R0,  
@@ -83,7 +98,7 @@ enum data_repackage_index
 #define GET_ADDRMAP_ROW_B0(x)  (0x3F & (x))
 
 // long hif_addr_update (union address_bits module_addr, __uint32_t *map)
-long hif_addr_update (__uint32_t *addrmap)
+int hif_addr_update (__uint32_t *addrmap)
 {
     __uint8_t i = 0, j = 0, k = 0;
     ddr_module_32gb[Rank].hif_position = GET_ADDRMAP_CS_B0(addrmap[0]) + 6;
@@ -114,12 +129,13 @@ long hif_addr_update (__uint32_t *addrmap)
     ddr_module_32gb[C1].hif_position = (0x3f == GET_ADDRMAP_COL_B5(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B5(addrmap[4]) + 5;
     ddr_module_32gb[C0].hif_position = (0x3f == GET_ADDRMAP_COL_B4(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B4(addrmap[4]) + 4;
     ddr_module_32gb[B3].hif_position = (0x3f == GET_ADDRMAP_COL_B3(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B3(addrmap[4]) + 3;
-    for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
-        printf("%s : %#x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].hif_position);
-    }
+    // for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
+    //     printf("%s : %#08x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].hif_position);
+    // }
     return 0;
 }
-long addr_moduled_to_hif (union address_bits module_addr)
+
+long addr_module_to_hif (__uint64_t module_addr)
 {
     union address_bits hif_addr;
     hif_addr.addr = 0;
@@ -128,10 +144,43 @@ long addr_moduled_to_hif (union address_bits module_addr)
     __uint32_t bit_value = 0;
 
     for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
-        bit_value = BIT_GET(module_addr.addr, ddr_module_32gb[i].module_position);
+        bit_value = BIT_GET(module_addr, ddr_module_32gb[i].module_position);
         hif_addr.addr |= (bit_value << ddr_module_32gb[i].hif_position);
     }
     return hif_addr.addr;
+}
+
+/*****************************************/
+/* soc   CHA     CHB   mem_line_num      */
+/* 0x0   0x0     0x2   0x0               */
+/* 0x4   0x4     0x6   0x1               */
+/*****************************************/
+__uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
+{
+    __uint64_t soc_addr = 0;
+    __uint64_t addr = 0;
+    char *ch = p_file_info->ch_name;
+    if (!strcmp(ch, "A")) {
+        addr = (hif_addr << 2);
+    } else if (!strcmp(ch, "B")) {
+        addr = (hif_addr << 2) + 2;
+    } else {
+        printf("Error!!! Wrong chn detect.\n");
+    }
+    if (p_file_info->interleave_size) {
+        soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + (p_file_info->sys_num % 2)
+        * p_file_info->interleave_size + addr;
+    } else {
+        soc_addr = ddr_sys_base_addr[0][p_file_info->sys_num] + addr;
+    }
+    return soc_addr;
+}
+__uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
+{
+    __uint64_t module_addr = 0;
+    module_addr = (p_file_info->mem_core_num << ddr_module_32gb[MemCore].module_position)
+    | (p_file_info->rank_num << ddr_module_32gb[Rank].module_position) | index;
+    return module_addr;
 }
 
 //__uint64_t get_file_position(long soc_address, long start_address)
@@ -143,30 +192,82 @@ long addr_moduled_to_hif (union address_bits module_addr)
 //    }
 //}
 
-/* file info create */
-void free_data(void *useless_data)
-{
-    struct FILE_INFO *tmp = useless_data;
-    free(tmp);
-}
-
-int equals(const void *x, const void *y) {
-    struct FILE_INFO *a = x;
-    struct FILE_INFO *b = y;
-    return  a->sys_num == b->sys_num &&
-            a->rank_num == b->rank_num &&
-            a->mem_core_num == b->mem_core_num &&
-            a->ch_name == b->ch_name &&
-            a->start_offset == b->start_offset &&
-            a->index == b->index &&
-            a->incresing == b->incresing;
-}
-
 int create_mem_load_cmd (FILE *p_file, struct FILE_INFO *p_file_info)
 {
-    fprintf(p_file, load_string);
+    __uint32_t tmp_data = 0;
+    fprintf(p_file, load_string, tmp_data);
     fprintf(p_file, hieraych_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num);
     fprintf(p_file, file_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index);
 }
 
+#define IS_CONTAIN(x, s, e) ((s > x || e < x) ? false : true)
+int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index)
+{
+    __uint64_t start_addr, end_addr, mem_index;
+    __uint64_t soc_addr, module_addr, hif_addr;
+    struct FILE_INFO *p_file_info = (struct FILE_INFO *)(file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
+    
+    start_addr = p_file_info->img_start_address;
+    end_addr = p_file_info->img_end_address;
+    mem_index = index;
+    //get module_addr
+    module_addr = module_addr_get(p_file_info, mem_index);
+    /* memcore size */
+    if (module_addr > DDR_MEMCORE_SIZE){
+        return 0;
+    }
+    //get soc_addr
+    soc_addr = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
 
+/* soc_addr < start_addr, soc_addr > start_addr + file_size, */
+/* no file need operate, offset plus, file_creating = 0 */
+if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
+    if (__glibc_unlikely(p_file_info->increasing)) {
+        p_file_info->increasing = false;
+        fclose(p_file_info->op_file);
+        FILE *p_script_file = fopen("ddr_load_memory.qel", "a+");
+        create_mem_load_cmd(p_script_file, p_file_info);
+        fclose(p_script_file);
+    }
+} else {
+/* soc_addr >= start_addr, soc_addr <= start_addr + file_size,*/
+/* continue add data to cur file if file_creating,*/
+/* or new file if file_creating = 0, file_creating = 1*/
+    if (!p_file_info->increasing) {
+        // create one file_info item, add to list
+        struct FILE_INFO *node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
+        memcpy(node, p_file_info, sizeof(node));
+        node->start_offset = mem_index;
+        node->increasing = true;
+        node->index++;
+        list_insert(file_list, node);
+        p_file_info = node;
+        // create new file
+        sprintf(p_file_info->file_name, file_name, p_file_info->sys_num,
+        p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num,
+        p_file_info->index);
+        p_file_info->op_file = fopen(p_file_info->file_name, "a+");
+    }
+
+            // get data from image file
+            union data_read data;
+            __uint64_t file_offset = 0;
+            __uint32_t result = 0;
+            file_offset = soc_addr - p_file_info->img_start_address;
+            // FILE *p_src_file = fopen("src", "rb");
+            FILE *p_src_file = p_file_info->img_file;
+            fseek(p_src_file, file_offset, SEEK_SET);
+            result = fread(data.data_char, 1, 2, p_src_file);
+            if (result != 2) {fputs ("Reading error",stderr); exit (3);}
+            // write data to vhx file
+            // FILE *p_file = fopen(p_file_info->file_name, "a+");
+            FILE *p_file = p_file_info->op_file;
+            // char tmp[30] = {0};
+            // int n = sprintf(tmp, "%x\n", data);
+            fprintf(p_file, "%x\n", data.data);
+            // fclose(p_file);
+    }
+    // mem_index++
+    // mem_index++;
+    // memcore_file_create (file_list, p_file_info, mem_index);
+}

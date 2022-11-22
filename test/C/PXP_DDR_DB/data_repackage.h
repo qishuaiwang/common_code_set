@@ -2,8 +2,14 @@
 #define DATA_REPACKAGE_H
 
 #include <stdio.h>
+#include "linked_list.h"
 
-#define DDR_MODULE_32GBIT_BIT_NUM 31
+#define DDR_SYS_NUM 6
+#define DDR_RANK_NUM 2
+#define DDR_MEMCORE_NUM 2
+#define DDR_MEMCORE_SIZE 0x100000000 // 0x4_0000_0000 / 4 = 0x1_0000_0000 =2^32
+#define DDR_MEMCORE_INDEX_MAX 0x80000000
+#define DDR_MODULE_32GBIT_BIT_NUM 32
 #define BIT_GET(x,y) (((x) >> (y)) & 0x1)
 
 struct MODULE_BIT_INFO {
@@ -64,16 +70,28 @@ struct FILE_INFO {
     __uint8_t sys_num;
     __uint8_t rank_num;
     __uint8_t mem_core_num;
-    char *ch_name;
+    char ch_name[2];
     __uint64_t start_offset;
+    __uint32_t interleave_size;
     __uint32_t index;
-    bool incresing;
-    char *file_name;
+    bool increasing;
+    bool iecc;
+    char file_name[32];
+    FILE *op_file;
+    FILE *img_file;
+    __uint64_t img_start_address;
+    __uint64_t img_end_address;
 };
 
 
+union data_read
+{
+    __uint16_t data;
+    char data_char[2];
+};
 
 
-long addr_moduled_to_hif (union address_bits module_addr);
+int hif_addr_update (__uint32_t *addrmap);
+int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index);
 
 #endif

@@ -2,3 +2,5 @@
 *.vhx
 *.o
 *.bak
+main
+printf_format_test
