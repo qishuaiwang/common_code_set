@@ -8,8 +8,8 @@
 
 char *load_string = "memory -load %%readmemh %n";
 char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr5_16GB_rank%d_chan%s.memcore%d";
-char *file_string = "-file DDRsys%d_rank%d_chan%c_memcore%d_%d\n";
-char *file_name = "DDRsys%d_rank%d_chan%c_memcore%d_%d";
+char *file_string = " -file DDRsys%d_rank%d_chan%s_memcore%d_%d -offset %d\n";
+char *file_name = "DDRsys%d_rank%d_chan%s_memcore%d_%d";
 
 /* DDR address in SOC map */
 __uint64_t ddr_sys_base_addr[2][DDR_SYS_NUM] = {
@@ -141,7 +141,7 @@ long addr_module_to_hif (__uint64_t module_addr)
     hif_addr.addr = 0;
     // module_addr.addr = 0;
     __uint32_t i = 0;
-    __uint32_t bit_value = 0;
+    __uint64_t bit_value = 0;
 
     for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
         bit_value = BIT_GET(module_addr, ddr_module_32gb[i].module_position);
@@ -195,18 +195,19 @@ __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
 int create_mem_load_cmd (FILE *p_file, struct FILE_INFO *p_file_info)
 {
     __uint32_t tmp_data = 0;
-    fprintf(p_file, load_string, tmp_data);
+    fprintf(p_file, load_string, &tmp_data);
     fprintf(p_file, hieraych_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num);
-    fprintf(p_file, file_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index);
+    fprintf(p_file, file_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index, p_file_info->start_offset);
 }
 
-#define IS_CONTAIN(x, s, e) ((s > x || e < x) ? false : true)
+#define IS_CONTAIN(x, s, e) ((s > x || e <= x) ? false : true)
 int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index)
 {
     __uint64_t start_addr, end_addr, mem_index;
     __uint64_t soc_addr, module_addr, hif_addr;
     struct FILE_INFO *p_file_info = (struct FILE_INFO *)(file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
     
+    // printf("index: %lu\n", index);
     start_addr = p_file_info->img_start_address;
     end_addr = p_file_info->img_end_address;
     mem_index = index;
@@ -218,7 +219,6 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
     }
     //get soc_addr
     soc_addr = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
-
 /* soc_addr < start_addr, soc_addr > start_addr + file_size, */
 /* no file need operate, offset plus, file_creating = 0 */
 if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
@@ -236,7 +236,7 @@ if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
     if (!p_file_info->increasing) {
         // create one file_info item, add to list
         struct FILE_INFO *node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
-        memcpy(node, p_file_info, sizeof(node));
+        memcpy(node, p_file_info, sizeof(*node));
         node->start_offset = mem_index;
         node->increasing = true;
         node->index++;
@@ -264,7 +264,7 @@ if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
             FILE *p_file = p_file_info->op_file;
             // char tmp[30] = {0};
             // int n = sprintf(tmp, "%x\n", data);
-            fprintf(p_file, "%x\n", data.data);
+            fprintf(p_file, "%04x\n", data.data);
             // fclose(p_file);
     }
     // mem_index++

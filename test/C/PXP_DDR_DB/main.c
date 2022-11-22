@@ -117,6 +117,7 @@ int used_sys_detect(struct FILE_INFO *p_file_info, __uint32_t *p)
 }
 
 int main(int argc, char** argv) {
+    int err_no = 0;
     char *input_file_name = "ddr_img.bin";
     char *json_file_name = "ddr_address_map.json";
     __uint64_t load_address = 0x3000000000;
@@ -166,12 +167,16 @@ int main(int argc, char** argv) {
     __uint64_t file_byte_size;
     if (file_tmp == NULL) {
         perror("Input file open failed\n");
+        err_no = -1;
+        goto err;
     } else {
         head_file_info.img_file = file_tmp;
-        fseek(file_tmp, 0, SEEK_SET);
+        fseek(file_tmp, 0, SEEK_END);
         file_byte_size = ftell(file_tmp);
-        if (0 == file_byte_size) {
+        if (!file_byte_size) {
             perror("Input file is NULL!\n");
+            err_no = -1;
+            goto err;
         }
     }
     head_file_info.img_start_address = load_address;
@@ -205,20 +210,25 @@ int main(int argc, char** argv) {
     for(int i = 0; i < DDR_SYS_NUM; i++) {
         if(ddr_sys_set[i]) {
             head_file_info.sys_num = i;
-        }
-        for (int j = 0; j < DDR_RANK_NUM; j++) {
-            head_file_info.rank_num = j;
-            for (int l = 0; l < 2; l++) {
-                strcpy(head_file_info.ch_name, l ? "B" : "A");
-                for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
-                    head_file_info.mem_core_num = k;
-                    __uint32_t memcore_index = 0;
-                    do{
-                        memcore_file_create(p_out_file_list, &head_file_info, memcore_index);
-                    } while(memcore_index++ < DDR_MEMCORE_INDEX_MAX);
+            for (int j = 0; j < DDR_RANK_NUM; j++) {
+                head_file_info.rank_num = j;
+                for (int l = 0; l < 2; l++) {
+                    strcpy(head_file_info.ch_name, l ? "B" : "A");
+                    for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
+                        head_file_info.mem_core_num = k;
+                        __uint32_t memcore_index = 0;
+                        do{
+                            memcore_file_create(p_out_file_list, &head_file_info, memcore_index);
+                        } while(memcore_index++ < DDR_MEMCORE_INDEX_MAX);
+                    }
                 }
             }
+        } else {
+            printf("DDR sys%d need not load.\n", i);
         }
     }
     list_destroy(p_out_file_list, free_data);
+    return 0;
+err:
+    return err_no;
 }
