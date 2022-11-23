@@ -2,7 +2,7 @@ INCLUDE = -I ./
 CFLAG = -g -lm
 
 main:cJSON.o linked_list.o data_repackage.o args_analysis.o format_convert.o main.o
-	gcc $(INCLUDE) cJSON.o linked_list.o args_analysis.o data_repackage.o format_convert.o main.o -o main $(CFLAG)
+	gcc $(INCLUDE) cJSON.o linked_list.o args_analysis.o data_repackage.o format_convert.o main.o -o img_backdoor_2_ddr $(CFLAG)
 
 main.o:main.c
 	gcc $(INCLUDE) -c main.c -o main.o $(CFLAG)

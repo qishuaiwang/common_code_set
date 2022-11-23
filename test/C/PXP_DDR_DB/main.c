@@ -149,12 +149,23 @@ int main(int argc, char** argv) {
     }
 
     // Register the program's helptext and version number.
-    ap_set_helptext(parser, "Usage: example...");
-    ap_set_version(parser, "1.0");
+    ap_set_helptext(parser, "\
+        Usage: img_backdoor_2_ddr [OPTION]... [FILE]...\n\
+        \n\
+        -h, --help              help\n\
+            --version           print current version\n\
+        -e, --iecc              flag of inline ecc. default false\n\
+        -l, --interleave_size   interleave size for interleave DDR space. default 256\n\
+        -i, --input_file        file name of the image file. default \"ddrc.bin\"\n\
+        -j, --json_file         json file name, configuration of address map. default \"ddr_address_map.json\"\n\
+        -a, --address           soc address to load. default 0x3000000000\n\
+        \n\
+        example: img_backdoor_2_ddr -l 512 -i kernel.img -a 0x3800010000\n");
+    ap_set_version(parser, "SW version : 1.0");
 
     // Register a flag and a string-valued and a integer-valued option.
     ap_flag(parser, "iecc e");
-    ap_int_opt(parser, "interleave l", 256);
+    ap_int_opt(parser, "interleave_size l", 256);
     ap_str_opt(parser, "input_file i", "ddrc.bin");
     ap_str_opt(parser, "json_file j", "ddr_address_map.json");
     ap_long_opt(parser, "address a", 0x3000000000);
@@ -179,7 +190,7 @@ int main(int argc, char** argv) {
     if (load_address > 0x2c00000000) {
         head_file_info.interleave_size = 0;
     } else {
-        head_file_info.interleave_size = ap_int_value(parser, "interleave");
+        head_file_info.interleave_size = ap_int_value(parser, "interleave_size");
     }
     FILE * file_tmp = fopen(input_file_name, "rb");
     __uint64_t file_byte_size;
