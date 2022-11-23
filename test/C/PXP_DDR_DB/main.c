@@ -213,6 +213,11 @@ int main(int argc, char** argv) {
     // Free the parser's memory.
     ap_free(parser);
 
+    file_tmp = fopen(BACKDOOR_SCRIPT_FILE, "rb");
+    if (file_tmp != NULL) {
+        fclose(file_tmp);
+        remove(BACKDOOR_SCRIPT_FILE);
+    }
     // Input file open
     #if 0
     union address_bits test_address;
@@ -238,10 +243,10 @@ int main(int argc, char** argv) {
             p_file_info->sys_num = i;
             for (int j = 0; j < DDR_RANK_NUM; j++) {
                 p_file_info->rank_num = j;
-                for (int l = 0; l < 2; l++) {
-                    strcpy(p_file_info->ch_name, l ? "B" : "A");
-                    for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
-                        p_file_info->mem_core_num = k;
+                for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
+                    p_file_info->mem_core_num = k;
+                    for (int l = 0; l < 2; l++) {
+                        strcpy(p_file_info->ch_name, l ? "B" : "A");
                         __uint32_t memcore_index = 0;
                         do{
                             int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index);

@@ -227,7 +227,7 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
         if (__glibc_unlikely(p_file_info->increasing)) {
             p_file_info->increasing = false;
             fclose(p_file_info->op_file);
-            FILE *p_script_file = fopen("ddr_load_memory.qel", "a+");
+            FILE *p_script_file = fopen(BACKDOOR_SCRIPT_FILE, "a+");
             create_mem_load_cmd(p_script_file, p_file_info);
             fclose(p_script_file);
         }
@@ -248,7 +248,7 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
             sprintf(p_file_info->file_name, file_name, p_file_info->sys_num,
             p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num,
             p_file_info->index);
-            p_file_info->op_file = fopen(p_file_info->file_name, "a+");
+            p_file_info->op_file = fopen(p_file_info->file_name, "w");
         }
 
         // get data from image file
@@ -269,6 +269,10 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
         fprintf(p_file, "%04x\n", data.data);
         p_file_info->byte_writed_num += 2;
         // fclose(p_file);
+        if(p_file_info->byte_writed_num == (end_addr - start_addr)/2) {
+            ret_no = -1;
+            goto err;
+        }
         if(p_file_info->byte_writed_num == (end_addr - start_addr)) {
             ret_no = -2;
             goto err;
