@@ -203,9 +203,10 @@ int create_mem_load_cmd (FILE *p_file, struct FILE_INFO *p_file_info)
 #define IS_CONTAIN(x, s, e) ((s > x || e <= x) ? false : true)
 int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index)
 {
+    int ret_no = 0;
     __uint64_t start_addr, end_addr, mem_index;
     __uint64_t soc_addr, module_addr, hif_addr;
-    struct FILE_INFO *p_file_info = (struct FILE_INFO *)(file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
+    struct FILE_INFO *p_file_info = (file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
     
     // printf("index: %lu\n", index);
     start_addr = p_file_info->img_start_address;
@@ -215,59 +216,68 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
     module_addr = module_addr_get(p_file_info, mem_index);
     /* memcore size */
     if (module_addr > DDR_MEMCORE_SIZE){
-        return 0;
+        ret_no = -1;
+        goto err;
     }
     //get soc_addr
     soc_addr = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
 /* soc_addr < start_addr, soc_addr > start_addr + file_size, */
 /* no file need operate, offset plus, file_creating = 0 */
-if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
-    if (__glibc_unlikely(p_file_info->increasing)) {
-        p_file_info->increasing = false;
-        fclose(p_file_info->op_file);
-        FILE *p_script_file = fopen("ddr_load_memory.qel", "a+");
-        create_mem_load_cmd(p_script_file, p_file_info);
-        fclose(p_script_file);
-    }
-} else {
+    if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
+        if (__glibc_unlikely(p_file_info->increasing)) {
+            p_file_info->increasing = false;
+            fclose(p_file_info->op_file);
+            FILE *p_script_file = fopen("ddr_load_memory.qel", "a+");
+            create_mem_load_cmd(p_script_file, p_file_info);
+            fclose(p_script_file);
+        }
+    } else {
 /* soc_addr >= start_addr, soc_addr <= start_addr + file_size,*/
 /* continue add data to cur file if file_creating,*/
 /* or new file if file_creating = 0, file_creating = 1*/
-    if (!p_file_info->increasing) {
-        // create one file_info item, add to list
-        struct FILE_INFO *node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
-        memcpy(node, p_file_info, sizeof(*node));
-        node->start_offset = mem_index;
-        node->increasing = true;
-        node->index++;
-        list_insert(file_list, node);
-        p_file_info = node;
-        // create new file
-        sprintf(p_file_info->file_name, file_name, p_file_info->sys_num,
-        p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num,
-        p_file_info->index);
-        p_file_info->op_file = fopen(p_file_info->file_name, "a+");
-    }
+        if (!p_file_info->increasing) {
+            // create one file_info item, add to list
+            struct FILE_INFO *node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
+            memcpy(node, p_file_info, sizeof(*node));
+            node->start_offset = mem_index;
+            node->increasing = true;
+            node->index++;
+            list_insert(file_list, node);
+            p_file_info = node;
+            // create new file
+            sprintf(p_file_info->file_name, file_name, p_file_info->sys_num,
+            p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num,
+            p_file_info->index);
+            p_file_info->op_file = fopen(p_file_info->file_name, "a+");
+        }
 
-            // get data from image file
-            union data_read data;
-            __uint64_t file_offset = 0;
-            __uint32_t result = 0;
-            file_offset = soc_addr - p_file_info->img_start_address;
-            // FILE *p_src_file = fopen("src", "rb");
-            FILE *p_src_file = p_file_info->img_file;
-            fseek(p_src_file, file_offset, SEEK_SET);
-            result = fread(data.data_char, 1, 2, p_src_file);
-            if (result != 2) {fputs ("Reading error",stderr); exit (3);}
-            // write data to vhx file
-            // FILE *p_file = fopen(p_file_info->file_name, "a+");
-            FILE *p_file = p_file_info->op_file;
-            // char tmp[30] = {0};
-            // int n = sprintf(tmp, "%x\n", data);
-            fprintf(p_file, "%04x\n", data.data);
-            // fclose(p_file);
+        // get data from image file
+        union data_read data;
+        __uint64_t file_offset = 0;
+        __uint32_t result = 0;
+        file_offset = soc_addr - p_file_info->img_start_address;
+        // FILE *p_src_file = fopen("src", "rb");
+        FILE *p_src_file = p_file_info->img_file;
+        fseek(p_src_file, file_offset, SEEK_SET);
+        result = fread(data.data_char, 1, 2, p_src_file);
+        if (result != 2) {fputs ("Reading error",stderr); exit (3);}
+        // write data to vhx file
+        // FILE *p_file = fopen(p_file_info->file_name, "a+");
+        FILE *p_file = p_file_info->op_file;
+        // char tmp[30] = {0};
+        // int n = sprintf(tmp, "%x\n", data);
+        fprintf(p_file, "%04x\n", data.data);
+        p_file_info->byte_writed_num += 2;
+        // fclose(p_file);
+        if(p_file_info->byte_writed_num == (end_addr - start_addr)) {
+            ret_no = -2;
+            goto err;
+        }
     }
     // mem_index++
     // mem_index++;
     // memcore_file_create (file_list, p_file_info, mem_index);
+    return 0;
+err:
+    return ret_no;
 }

@@ -8,7 +8,8 @@
 #define DDR_RANK_NUM 2
 #define DDR_MEMCORE_NUM 2
 #define DDR_MEMCORE_SIZE 0x100000000 // 0x4_0000_0000 / 4 = 0x1_0000_0000 =2^32
-#define DDR_MEMCORE_INDEX_MAX 0x80000000
+#define DDR_MEMCORE_INDEX_MAX 0x8000
+// #define DDR_MEMCORE_INDEX_MAX 0x80000000
 #define DDR_MODULE_32GBIT_BIT_NUM 32
 #define BIT_GET(x,y) (((x) >> (y)) & 0x1)
 
@@ -78,6 +79,7 @@ struct FILE_INFO {
     bool iecc;
     char file_name[32];
     FILE *op_file;
+    __uint64_t byte_writed_num;
     FILE *img_file;
     __uint64_t img_start_address;
     __uint64_t img_end_address;

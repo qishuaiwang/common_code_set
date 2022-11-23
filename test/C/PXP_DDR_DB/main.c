@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "args_analysis.h"
 #include "linked_list.h"
 #include "data_repackage.h"
@@ -116,6 +117,16 @@ int used_sys_detect(struct FILE_INFO *p_file_info, __uint32_t *p)
     }
 }
 
+void cur_time_print(void)
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    printf ("Current local time and date: %s", asctime(timeinfo));
+}
+
 int main(int argc, char** argv) {
     int err_no = 0;
     char *input_file_name = "ddr_img.bin";
@@ -124,6 +135,13 @@ int main(int argc, char** argv) {
     __uint8_t iecc = 0x0;
     __uint32_t interleave_size = 256;
     struct FILE_INFO head_file_info = {0};
+    struct FILE_INFO *p_file_info = &head_file_info;
+
+    linkedlist out_file_list = {0};
+    linkedlist *p_out_file_list = &out_file_list;
+    list_init(&p_out_file_list);
+
+    cur_time_print();
     // Instantiate a new ArgParser instance.
     ArgParser* parser = ap_new();
     if (!parser) {
@@ -203,32 +221,43 @@ int main(int argc, char** argv) {
 
     hif_addr_update(addrmap);
     __uint32_t ddr_sys_set[DDR_SYS_NUM] = {0};
-    used_sys_detect(&head_file_info, ddr_sys_set);
-    linkedlist out_file_list = {0};
-    linkedlist *p_out_file_list = &out_file_list;
-    list_init(&p_out_file_list);
+    used_sys_detect(p_file_info, ddr_sys_set);
     for(int i = 0; i < DDR_SYS_NUM; i++) {
         if(ddr_sys_set[i]) {
-            head_file_info.sys_num = i;
+            p_file_info->sys_num = i;
             for (int j = 0; j < DDR_RANK_NUM; j++) {
-                head_file_info.rank_num = j;
+                p_file_info->rank_num = j;
                 for (int l = 0; l < 2; l++) {
-                    strcpy(head_file_info.ch_name, l ? "B" : "A");
+                    strcpy(p_file_info->ch_name, l ? "B" : "A");
                     for (int k = 0; k < DDR_MEMCORE_NUM; k++) {
-                        head_file_info.mem_core_num = k;
+                        p_file_info->mem_core_num = k;
                         __uint32_t memcore_index = 0;
                         do{
-                            memcore_file_create(p_out_file_list, &head_file_info, memcore_index);
+                            int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index);
+                            p_file_info = (p_out_file_list->head) ? (struct FILE_INFO *)(p_out_file_list->head->data) : p_file_info;
+                            if(ret == -1){
+                                break;
+                            } else if (ret == -2)
+                            {
+                                goto done;
+                            }
+                            
                         } while(memcore_index++ < DDR_MEMCORE_INDEX_MAX);
                     }
                 }
             }
+            done:
+                printf("All data has done until DDR sys%d.\n", i);
+                break;
         } else {
             printf("DDR sys%d need not load.\n", i);
         }
     }
     list_destroy(p_out_file_list, free_data);
+    cur_time_print();
     return 0;
 err:
+    list_destroy(p_out_file_list, free_data);
+    cur_time_print();
     return err_no;
 }

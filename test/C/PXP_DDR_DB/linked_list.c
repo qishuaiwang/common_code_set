@@ -9,24 +9,41 @@ void list_init(linkedlist **list)
 	(*list)->head = NULL;
 	(*list)->tail = NULL;
 }
-
+#if 0
 void list_destroy(linkedlist *list, void (free_data)(void *))
 {
 	if (list->head == NULL)
 		return;
 	else {
 		struct list *tmp = list;
-		free_data(tmp->head->data);
-		free(tmp->head);
 		tmp->head = tmp->head->next;
 
 		list_destroy(tmp, free_data);
-		// free_data(tmp->head->data);
+		free_data(tmp->head->data);
 		tmp->head->next = NULL;
-        free(tmp);
 	}
 }
+#else
+void list_destroy(linkedlist *list, void (free_data)(void *))
+{
+	if (list->head == NULL) {
+        free(list);
+		return;
+	}
+	else {
+		struct list *tmp = list;
+		struct list_node *head = list->head->next;
+		free_data(tmp->head->data);
+		free(tmp->head);
+		tmp->head = head;
 
+		list_destroy(tmp, free_data);
+		// free_data(tmp->head->data);
+		// tmp->head->next = NULL;
+		// tmp->tail = NULL;
+	}
+}
+#endif
 void list_insert(linkedlist *list, void *data)
 {
 	struct list_node *node = (struct list_node *) malloc(sizeof(struct list_node));
