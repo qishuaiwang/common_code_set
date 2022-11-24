@@ -8,7 +8,7 @@
 
 char *load_string = "memory -load %%readmemh %n";
 char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr5_16GB_rank%d_chan%s.memcore%d";
-char *file_string = " -file DDRsys%d_rank%d_chan%s_memcore%d_%d -offset %d\n";
+char *file_string = " -file DDRsys%d_rank%d_chan%s_memcore%d_%d -start %d\n";
 char *file_name = "DDRsys%d_rank%d_chan%s_memcore%d_%d";
 
 /* DDR address in SOC map */
