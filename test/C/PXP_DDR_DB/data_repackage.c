@@ -262,7 +262,7 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
     /* memcore size */
     if (module_addr > DDR_MEMCORE_SIZE){
         ret_no = -1;
-        goto err;
+        goto end;
     }
     //get soc_addr
     soc_addr = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
@@ -270,11 +270,12 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
 /* no file need operate, offset plus, file_creating = 0 */
     if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
         if (__glibc_unlikely(p_file_info->increasing)) {
-            p_file_info->increasing = false;
+f_save:     p_file_info->increasing = false;
             fclose(p_file_info->op_file);
             FILE *p_script_file = fopen(BACKDOOR_SCRIPT_FILE, "a+");
             create_mem_load_cmd(p_script_file, p_file_info);
             fclose(p_script_file);
+            goto end;
         }
     } else {
 /* soc_addr >= start_addr, soc_addr <= start_addr + file_size,*/
@@ -316,17 +317,17 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
         // fclose(p_file);
         if(p_file_info->byte_writed_num == (end_addr - start_addr)/2) {
             ret_no = -1;
-            goto err;
+            goto f_save;
         }
         if(p_file_info->byte_writed_num == (end_addr - start_addr)) {
             ret_no = -2;
-            goto err;
+            goto f_save;
         }
     }
     // mem_index++
     // mem_index++;
     // memcore_file_create (file_list, p_file_info, mem_index);
     return 0;
-err:
+end:
     return ret_no;
 }

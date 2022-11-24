@@ -247,6 +247,7 @@ int main(int argc, char** argv) {
                     p_file_info->mem_core_num = k;
                     for (int l = 0; l < 2; l++) {
                         strcpy(p_file_info->ch_name, l ? "B" : "A");
+                        p_file_info->index = 0;
                         __uint32_t memcore_index = 0;
                         do{
                             int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index);
