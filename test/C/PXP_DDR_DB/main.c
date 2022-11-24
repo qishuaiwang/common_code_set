@@ -249,8 +249,9 @@ int main(int argc, char** argv) {
                         strcpy(p_file_info->ch_name, l ? "B" : "A");
                         p_file_info->index = 0;
                         __uint32_t memcore_index = 0;
+                        __uint64_t mem_save_bytes = mem_save_data_num_get(p_file_info);
                         do{
-                            int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index);
+                            int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index, mem_save_bytes);
                             p_file_info = (p_out_file_list->head) ? (struct FILE_INFO *)(p_out_file_list->head->data) : p_file_info;
                             if(ret == -1){
                                 break;
@@ -264,7 +265,7 @@ int main(int argc, char** argv) {
                 }
             }
             done:
-                printf("All data has done until DDR sys%d.\n", i);
+                printf("All data has done with DDR sys%d. No other sys need.\n", i);
                 break;
         } else {
             printf("DDR sys%d need not load.\n", i);

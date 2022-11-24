@@ -98,6 +98,7 @@ union data_read
 
 
 int hif_addr_update (__uint32_t *addrmap);
-int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index);
+int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index, __uint64_t data_save_num);
+__uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info);
 
 #endif

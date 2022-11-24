@@ -210,6 +210,7 @@ __uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
     } else if (!strcmp(ch, "B")) {
         addr = (hif_addr << 2) + 2;
     } else {
+        addr = (hif_addr << 2);
         printf("Error!!! Wrong chn detect.\n");
     }
     if (p_file_info->interleave_size) {
@@ -245,8 +246,27 @@ int create_mem_load_cmd (FILE *p_file, struct FILE_INFO *p_file_info)
     fprintf(p_file, file_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index, p_file_info->start_offset);
 }
 
+#define MIN(x, y) (x < y ? x : y)
+#define MAX(x, y) (x > y ? x : y)
+__uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info)
+{
+    __uint64_t start_addr, end_addr, mem_index_min, mem_index_max;
+    __uint64_t soc_addr_min, soc_addr_max, module_addr;
+    __uint64_t data_saved_num;
+    start_addr = p_file_info->img_start_address;
+    end_addr = p_file_info->img_end_address;
+    mem_index_min = 0;
+    module_addr = module_addr_get(p_file_info, mem_index_min);
+    soc_addr_min = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
+    mem_index_max = DDR_MEMCORE_INDEX_MAX;
+    module_addr = module_addr_get(p_file_info, mem_index_max);
+    soc_addr_max = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
+    data_saved_num = MIN(end_addr, soc_addr_max) - MAX(start_addr, soc_addr_min);
+    return data_saved_num;
+}
+
 #define IS_CONTAIN(x, s, e) ((s > x || e <= x) ? false : true)
-int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index)
+int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index, __uint64_t data_save_num)
 {
     int ret_no = 0;
     __uint64_t start_addr, end_addr, mem_index;
@@ -275,6 +295,7 @@ f_save:     p_file_info->increasing = false;
             FILE *p_script_file = fopen(BACKDOOR_SCRIPT_FILE, "a+");
             create_mem_load_cmd(p_script_file, p_file_info);
             fclose(p_script_file);
+            p_file_info->index++;
             goto end;
         }
     } else {
@@ -287,7 +308,6 @@ f_save:     p_file_info->increasing = false;
             memcpy(node, p_file_info, sizeof(*node));
             node->start_offset = mem_index;
             node->increasing = true;
-            node->index++;
             list_insert(file_list, node);
             p_file_info = node;
             // create new file
@@ -315,11 +335,11 @@ f_save:     p_file_info->increasing = false;
         fprintf(p_file, "%04x\n", data.data);
         p_file_info->byte_writed_num += 2;
         // fclose(p_file);
-        if(p_file_info->byte_writed_num == (end_addr - start_addr)/2) {
+        if(p_file_info->byte_writed_num == (data_save_num)/2) {
             ret_no = -1;
             goto f_save;
         }
-        if(p_file_info->byte_writed_num == (end_addr - start_addr)) {
+        if(p_file_info->byte_writed_num == (data_save_num)) {
             ret_no = -2;
             goto f_save;
         }
