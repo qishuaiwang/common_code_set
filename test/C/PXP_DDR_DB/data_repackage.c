@@ -20,6 +20,51 @@ __uint64_t ddr_sys_base_addr[2][DDR_SYS_NUM] = {
 /* Just for RBC module address configuration         */
 /* Do not change the sequence, or result will wrong. */
 /*****************************************************/
+#ifndef DDR_MODULE_ADDR_RBC
+struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
+    // {"CH" ,  -1,  -1,  1,  0},
+    {"B0" ,  0,  0,  2,  0},
+    {"B1" ,  1,  1,  3,  0},
+    {"B2" ,  2,  2,  4,  0},
+    {"B3" ,  3,  3,  5,  0},
+    {"C0" ,  4,  4,  6,  0},
+    {"C1" ,  5,  5,  7,  0},
+    {"C2" ,  6,  6,  8,  0},
+    {"C3" ,  7,  7,  9,  0},
+    {"C4" ,  8,  8, 10,  0},
+    {"C5" ,  9,  9, 11,  0},
+    {"R0",  10, 10, 12,  0},
+    {"R1",  11, 11, 13,  0},
+    {"R2",  12, 12, 14,  0},
+    {"R3",  13, 13, 15,  0},
+    {"R4",  14, 14, 16,  0},
+    {"R5",  15, 15, 17,  0},
+    {"R6",  16, 16, 18,  0},
+    {"R7",  17, 17, 19,  0},
+    {"R8",  18, 18, 20,  0},
+    {"R9",  19, 19, 21,  0},
+    {"R10", 20, 20, 22,  0},
+    {"R11", 21, 21, 23,  0},
+    {"R12", 22, 22, 24,  0},
+    {"R13", 23, 23, 25,  0},
+    {"R14", 24, 24, 26,  0},
+    {"R15", 25, 25, 27,  0},
+    {"BA0", 26, 26, 28,  0},
+    {"BA1", 27, 27, 29,  0},
+    {"BG0", 28, 28, 30,  0},
+    {"BG1", 29, 29, 31,  0},
+    {"MemCore", 30, 30, 32,  0},
+    {"Rank", 31, 31, 33,  0},
+};
+_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GBIT_BIT_NUM,
+                "Please make sure array size not over defined.");
+enum data_repackage_index
+{
+    B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R1, R2, R3, R4, R5,
+    R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, BA0, BA1, BG0, BG1, R0,
+    MemCore, Rank
+};
+#else
 struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     // {"CH" ,  -1,  -1,  1,  0},
     {"B0" ,  0,  0,  2,  0},
@@ -63,7 +108,7 @@ enum data_repackage_index
     R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15,
     MemCore, Rank
 };
-
+#endif
 #define GET_ADDRMAP_CS_B0(x) (0x3F & (x))
 #define GET_ADDRMAP_BANK_B2(x) (0x3F & ((x) >> 16))
 #define GET_ADDRMAP_BANK_B1(x) (0x3F & ((x) >> 8))
