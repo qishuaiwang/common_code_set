@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-int main()
+int uint16_vhx_create()
 {
     #define TEST_BYTE_NUM 256
     #define BYTE_ALIGN(x) ((x >> 3))
@@ -62,4 +62,26 @@ int main()
    fclose(fptr);
  
    return 0;
+}
+
+union uint32_char
+{
+    /* data */
+    __uint32_t data;
+    char bytes[4];
+};
+
+int main(void)
+{
+    union uint32_char temp;
+    __uint32_t i = 0;
+    __uint64_t file_size = 20*1024;
+    char *bin_file_name = "sequence.bin";
+    FILE *p_file = fopen(bin_file_name, "wb");
+    for (i = 0; i < file_size; i++) {
+        temp.data = i * sizeof(__uint32_t);
+        fwrite(temp.bytes, sizeof(char), sizeof(__uint32_t), p_file);
+    }
+    fclose(p_file);
+    return 0;
 }
