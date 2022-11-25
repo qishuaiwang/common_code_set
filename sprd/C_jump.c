@@ -1,3 +1,26 @@
+
+#if 0
+//定义一个函数指针
+
+Uint32 gEntryPoint;
+static void (*APPEntry)(void);
+//将制定地址强制转换为不带参数不带返回值的值函数指针。
+APPEntry = (void (*)(void)) gEntryPoint;
+(*APPEntry)();
+
+
+
+实际上就是：
+
+首先要将0x100000强制转换成函数指针,即:
+     (void (*)())0x100000
+     然后再调用它:
+   *((void (*)())0x100000)();
+   用typedef可以看得更直观些:
+    typedef void(*)() voidFuncPtr;
+   *((voidFuncPtr)0x100000)();
+#endif
+
 #define UBOOT_START_ADDR 0x88000000
 __attribute__((noreturn)) void jump_uboot(void)
 {
