@@ -11,7 +11,7 @@
             "request": "launch",
             // "program": "${workspaceFolder}/test/C/PXP_DDR_DB/main",
             "program": "${fileDirname}/img_backdoor_2_ddr",
-            "args": ["-l", "512", "-i", "ddrc_init_a78.bin", "-a", "0x4000000048"],
+            "args": ["-l", "512", "-i", "ddrc_init_a78.bin", "-a", "0x3008000000"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             // "cwd": "${workspaceFolder}/test/C/PXP_DDR_DB/",

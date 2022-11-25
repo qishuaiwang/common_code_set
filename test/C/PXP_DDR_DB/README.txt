@@ -16,3 +16,5 @@ Usage: img_backdoor_2_ddr [OPTION]... [FILE]...
 -a, --address           soc address to load. default 0x3000000000
 
 example: img_backdoor_2_ddr -l 512 -i kernel.img -a 0x3800010000
+
+verify method: md5sum check.

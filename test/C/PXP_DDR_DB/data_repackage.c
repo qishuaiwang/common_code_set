@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <sys/cdefs.h>
 #include "data_repackage.h"
 #include "linked_list.h"
 
 char *load_string = "memory -load %%readmemh %n";
 char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr5_16GB_rank%d_chan%s.memcore%d";
-char *file_string = " -file DDRsys%d_rank%d_chan%s_memcore%d_%d -start %d\n";
+char *file_string = " -file %s/DDRsys%d_rank%d_chan%s_memcore%d_%d -start %d\n";
 char *file_name = "DDRsys%d_rank%d_chan%s_memcore%d_%d";
 
 /* DDR address in SOC map */
@@ -60,8 +61,8 @@ _Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_
                 "Please make sure array size not over defined.");
 enum data_repackage_index
 {
-    B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R1, R2, R3, R4, R5,
-    R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, BA0, BA1, BG0, BG1, R0,
+    B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R0, R1, R2, R3, R4, R5,
+    R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, BA0, BA1, BG0, BG1,
     MemCore, Rank
 };
 #else
@@ -174,13 +175,13 @@ int hif_addr_update (__uint32_t *addrmap)
     ddr_module_32gb[C1].hif_position = (0x3f == GET_ADDRMAP_COL_B5(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B5(addrmap[4]) + 5;
     ddr_module_32gb[C0].hif_position = (0x3f == GET_ADDRMAP_COL_B4(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B4(addrmap[4]) + 4;
     ddr_module_32gb[B3].hif_position = (0x3f == GET_ADDRMAP_COL_B3(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B3(addrmap[4]) + 3;
-    // for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
-    //     printf("%s : %#08x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].hif_position);
-    // }
+    for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
+        printf("%s : module: %#08x hif: %#08x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].module_position, ddr_module_32gb[i].hif_position);
+    }
     return 0;
 }
 
-long addr_module_to_hif (__uint64_t module_addr)
+__uint64_t addr_module_to_hif (__uint64_t module_addr)
 {
     union address_bits hif_addr;
     hif_addr.addr = 0;
@@ -214,8 +215,8 @@ __uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
         printf("Error!!! Wrong chn detect.\n");
     }
     if (p_file_info->interleave_size) {
-        soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + (p_file_info->sys_num % 2)
-        * p_file_info->interleave_size + addr;
+        soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + ((addr / p_file_info->interleave_size) + p_file_info->sys_num % 2)
+        * p_file_info->interleave_size + (addr % p_file_info->interleave_size);
     } else {
         soc_addr = ddr_sys_base_addr[0][p_file_info->sys_num] + addr;
     }
@@ -241,9 +242,11 @@ __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
 int create_mem_load_cmd (FILE *p_file, struct FILE_INFO *p_file_info)
 {
     __uint32_t tmp_data = 0;
+	char cur_dir[1024] = {0};
+	getcwd(cur_dir, 1024);
     fprintf(p_file, load_string, &tmp_data);
     fprintf(p_file, hieraych_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num);
-    fprintf(p_file, file_string, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index, p_file_info->start_offset);
+    fprintf(p_file, file_string, cur_dir, p_file_info->sys_num, p_file_info->rank_num, p_file_info->ch_name, p_file_info->mem_core_num, p_file_info->index, p_file_info->start_offset);
 }
 
 #define MIN(x, y) (x < y ? x : y)
@@ -261,7 +264,7 @@ __uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info)
     mem_index_max = DDR_MEMCORE_INDEX_MAX;
     module_addr = module_addr_get(p_file_info, mem_index_max);
     soc_addr_max = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
-    data_saved_num = MIN(end_addr, soc_addr_max) - MAX(start_addr, soc_addr_min);
+    data_saved_num = MIN(end_addr, soc_addr_max) - MAX(start_addr, soc_addr_min) + 1;
     return data_saved_num;
 }
 

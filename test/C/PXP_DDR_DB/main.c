@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
         }
     }
     head_file_info.img_start_address = load_address;
-    head_file_info.img_end_address = load_address + file_byte_size;
+    head_file_info.img_end_address = load_address + file_byte_size - 1;
     // Free the parser's memory.
     ap_free(parser);
 
