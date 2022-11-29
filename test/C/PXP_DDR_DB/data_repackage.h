@@ -11,7 +11,7 @@
 #define DDR_MEMCORE_NUM 2
 #define DDR_MEMCORE_SIZE 0x100000000 // 0x4_0000_0000 / 4 = 0x1_0000_0000 =2^32
 // #define DDR_MEMCORE_INDEX_MAX 0x8000
-#define DDR_MEMCORE_INDEX_MAX 0x80000000 // DDR_MEMCORE_SIZE = DDR_MEMCORE_INDEX_MAX * 2
+#define DDR_MEMCORE_INDEX_MAX 0x40000000 // DDR_MEMCORE_SIZE = DDR_MEMCORE_INDEX_MAX * 2(chn) * 2(bytes)
 #define DDR_MODULE_32GBIT_BIT_NUM 32
 
 #define BIT_GET(x,y) (((x) >> (y)) & 0x1)
@@ -68,7 +68,7 @@ union address_bits {
         int bit38 : 1;
         int bit39 : 1;
 	} bits;
-	long addr;
+	__uint64_t addr;
 };
 
 struct FILE_INFO {

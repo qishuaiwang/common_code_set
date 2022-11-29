@@ -249,6 +249,7 @@ int main(int argc, char** argv) {
                         strcpy(p_file_info->ch_name, l ? "B" : "A");
                         p_file_info->index = 0;
                         __uint32_t memcore_index = 0;
+                        // memcore_index = 0x101FFFFe;
                         __uint64_t mem_save_bytes = mem_save_data_num_get(p_file_info);
                         do{
                             int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index, mem_save_bytes);

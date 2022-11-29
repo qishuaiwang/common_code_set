@@ -289,6 +289,10 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
     }
     //get soc_addr
     soc_addr = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
+    // if (soc_addr == 0x3008000040)
+    // {
+        // while (1) printf("now\n");
+    // }
 /* soc_addr < start_addr, soc_addr > start_addr + file_size, */
 /* no file need operate, offset plus, file_creating = 0 */
     if (!(IS_CONTAIN(soc_addr, start_addr, end_addr))) {
