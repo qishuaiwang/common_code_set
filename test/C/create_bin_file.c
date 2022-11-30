@@ -74,11 +74,12 @@ union uint32_char
 int main(void)
 {
     union uint32_char temp;
-    __uint32_t i = 0;
-    __uint64_t file_size = 20*1024;
+    __uint64_t i = 0;
+    __uint64_t file_size = 4*1024ul*1024ul*1024ul;
     char *bin_file_name = "sequence.bin";
     FILE *p_file = fopen(bin_file_name, "wb");
-    for (i = 0; i < file_size; i++) {
+    printf("bin file size:%#lx\n", file_size);
+    for (i = 0; i < file_size/4; i++) {
         temp.data = i * sizeof(__uint32_t);
         fwrite(temp.bytes, sizeof(char), sizeof(__uint32_t), p_file);
     }
