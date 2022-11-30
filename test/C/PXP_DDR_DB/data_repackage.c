@@ -9,7 +9,7 @@
 
 char *load_string = "memory -load %%readmemh %n";
 char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr5_16GB_rank%d_chan%s.memcore%d";
-char *file_string = " -file %s/DDRsys%d_rank%d_chan%s_memcore%d_%d -start %d\n";
+char *file_string = " -file %s/DDRsys%d_rank%d_chan%s_memcore%d_%d -start %#010x\n";
 char *file_name = "DDRsys%d_rank%d_chan%s_memcore%d_%d";
 
 /* DDR address in SOC map */
@@ -56,6 +56,12 @@ struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     {"BG1", 29, 29, 31,  0},
     {"MemCore", 30, 30, 32,  0},
     {"Rank", 31, 31, 33,  0},
+    // {"BA0", 23, 23, 25,  0},
+    // {"BA1", 24, 24, 26,  0},
+    // {"BG0", 25, 25, 27,  0},
+    // {"BG1", 26, 26, 28,  0},
+    // {"MemCore", 27, 27, 29,  0},
+    // {"Rank", 28, 28, 30,  0},
 };
 _Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GBIT_BIT_NUM,
                 "Please make sure array size not over defined.");
@@ -64,6 +70,9 @@ enum data_repackage_index
     B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R0, R1, R2, R3, R4, R5,
     R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, BA0, BA1, BG0, BG1,
     MemCore, Rank
+    // B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R0, R1, R2, R3, R4, R5,
+    // R6, R7, R8, R9, R10, R11, R12, BA0, BA1, BG0, BG1,
+    // MemCore, Rank
 };
 #else
 struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
@@ -148,6 +157,7 @@ int hif_addr_update (__uint32_t *addrmap)
 {
     __uint8_t i = 0, j = 0, k = 0;
     ddr_module_32gb[Rank].hif_position = GET_ADDRMAP_CS_B0(addrmap[0]) + 6;
+    ddr_module_32gb[MemCore].hif_position = (0x3f == GET_ADDRMAP_ROW_B16(addrmap[5])) ? 0x3f : GET_ADDRMAP_ROW_B16(addrmap[5]) + 22;
     ddr_module_32gb[R15].hif_position = (0x3f == GET_ADDRMAP_ROW_B15(addrmap[5])) ? 0x3f : GET_ADDRMAP_ROW_B15(addrmap[5]) + 21;
     ddr_module_32gb[R14].hif_position = (0x3f == GET_ADDRMAP_ROW_B14(addrmap[5])) ? 0x3f : GET_ADDRMAP_ROW_B14(addrmap[5]) + 20;
     ddr_module_32gb[R13].hif_position = (0x3f == GET_ADDRMAP_ROW_B13(addrmap[6])) ? 0x3f : GET_ADDRMAP_ROW_B13(addrmap[6]) + 19;
@@ -196,11 +206,12 @@ __uint64_t addr_module_to_hif (__uint64_t module_addr)
     return hif_addr.addr;
 }
 
-/*****************************************/
-/* soc   CHA     CHB   mem_line_num      */
-/* 0x0   0x0     0x2   0x0               */
-/* 0x4   0x4     0x6   0x1               */
-/*****************************************/
+/*************************************************/
+/* soc   hif     CHA     CHB   mem_line_num      */
+/* 0x0   0x0     0x0     0x2   0x0               */
+/* 0x4   0x1     0x4     0x6   0x1               */
+/* 0x8   0x2     0x8     0xa   0x2               */
+/*************************************************/
 __uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
 {
     __uint64_t soc_addr = 0;
@@ -215,8 +226,10 @@ __uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
         printf("Error!!! Wrong chn detect.\n");
     }
     if (p_file_info->interleave_size) {
-        soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + ((addr / p_file_info->interleave_size) + p_file_info->sys_num % 2)
+        soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + (((addr / p_file_info->interleave_size) << 1) + p_file_info->sys_num % 2)
         * p_file_info->interleave_size + (addr % p_file_info->interleave_size);
+        // soc_addr = ddr_sys_base_addr[1][p_file_info->sys_num] + ((addr & (~(p_file_info->interleave_size - 1))) << 1) + (p_file_info->sys_num & 0x1)
+        // * p_file_info->interleave_size + (addr & (p_file_info->interleave_size - 1));
     } else {
         soc_addr = ddr_sys_base_addr[0][p_file_info->sys_num] + addr;
     }
@@ -258,14 +271,16 @@ __uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info)
     __uint64_t data_saved_num;
     start_addr = p_file_info->img_start_address;
     end_addr = p_file_info->img_end_address;
-    mem_index_min = 0;
-    module_addr = module_addr_get(p_file_info, mem_index_min);
-    soc_addr_min = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
-    mem_index_max = DDR_MEMCORE_INDEX_MAX;
-    module_addr = module_addr_get(p_file_info, mem_index_max);
-    soc_addr_max = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
-    data_saved_num = MIN(end_addr, soc_addr_max) - MAX(start_addr, soc_addr_min) + 1;
+    data_saved_num = MIN(DDR_MEMCORE_SIZE, end_addr - start_addr);
     return data_saved_num;
+    // mem_index_min = 0;
+    // module_addr = module_addr_get(p_file_info, mem_index_min);
+    // soc_addr_min = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
+    // mem_index_max = DDR_MEMCORE_INDEX_MAX;
+    // module_addr = module_addr_get(p_file_info, mem_index_max);
+    // soc_addr_max = addr_hif_to_soc(p_file_info, addr_module_to_hif(module_addr));
+    // data_saved_num = MIN(end_addr, soc_addr_max) - MAX(start_addr, soc_addr_min) + 1;
+    // return data_saved_num;
 }
 
 #define IS_CONTAIN(x, s, e) ((s > x || e <= x) ? false : true)
@@ -348,6 +363,10 @@ f_save:     p_file_info->increasing = false;
         }
         if(p_file_info->byte_writed_num == (data_save_num)) {
             ret_no = -2;
+            goto f_save;
+        }
+        if(mem_index == (DDR_MEMCORE_INDEX_MAX - 1)) {
+            ret_no = -1;
             goto f_save;
         }
     }

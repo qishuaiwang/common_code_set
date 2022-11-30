@@ -235,6 +235,7 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    __uint32_t memcore_index = 0;
     hif_addr_update(addrmap);
     __uint32_t ddr_sys_set[DDR_SYS_NUM] = {0};
     used_sys_detect(p_file_info, ddr_sys_set);
@@ -248,8 +249,8 @@ int main(int argc, char** argv) {
                     for (int l = 0; l < 2; l++) {
                         strcpy(p_file_info->ch_name, l ? "B" : "A");
                         p_file_info->index = 0;
-                        __uint32_t memcore_index = 0;
                         // memcore_index = 0x101FFFFe;
+                        memcore_index = 0;
                         __uint64_t mem_save_bytes = mem_save_data_num_get(p_file_info);
                         do{
                             int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index, mem_save_bytes);
@@ -261,13 +262,12 @@ int main(int argc, char** argv) {
                                 goto done;
                             }
                             
-                        } while(memcore_index++ < DDR_MEMCORE_INDEX_MAX);
+                        } while(++memcore_index < DDR_MEMCORE_INDEX_MAX);
                     }
                 }
             }
             done:
-                printf("All data has done with DDR sys%d. No other sys need.\n", i);
-                break;
+                    printf("All data has done with DDR sys%d. memcore_index %#x.\n", i, memcore_index);
         } else {
             printf("DDR sys%d need not load.\n", i);
         }
