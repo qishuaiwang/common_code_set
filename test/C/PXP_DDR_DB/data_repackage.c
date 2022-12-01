@@ -50,11 +50,11 @@ struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     {"R13", 23, 23, 25,  0},
     {"R14", 24, 24, 26,  0},
     {"R15", 25, 25, 27,  0},
-    {"BA0", 26, 26, 28,  0},
-    {"BA1", 27, 27, 29,  0},
-    {"BG0", 28, 28, 30,  0},
-    {"BG1", 29, 29, 31,  0},
-    {"MemCore", 30, 30, 32,  0},
+    {"MemCore", 26, 26, 28,  0},
+    {"BA0", 27, 27, 29,  0},
+    {"BA1", 28, 28, 30,  0},
+    {"BG0", 29, 29, 31,  0},
+    {"BG1", 30, 30, 32,  0},
     {"Rank", 31, 31, 33,  0},
     // {"BA0", 23, 23, 25,  0},
     // {"BA1", 24, 24, 26,  0},
@@ -68,8 +68,8 @@ _Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_
 enum data_repackage_index
 {
     B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R0, R1, R2, R3, R4, R5,
-    R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, BA0, BA1, BG0, BG1,
-    MemCore, Rank
+    R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, MemCore, BA0, BA1, BG0, BG1,
+    Rank
     // B0 = 0, B1, B2, B3, C0, C1, C2, C3, C4, C5, R0, R1, R2, R3, R4, R5,
     // R6, R7, R8, R9, R10, R11, R12, BA0, BA1, BG0, BG1,
     // MemCore, Rank
@@ -235,11 +235,20 @@ __uint64_t addr_hif_to_soc(struct FILE_INFO *p_file_info, __uint64_t hif_addr)
     }
     return soc_addr;
 }
+
+// __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
+// {
+//     __uint64_t module_addr = 0;
+//     module_addr = (p_file_info->mem_core_num << ddr_module_32gb[MemCore].module_position)
+//     | (p_file_info->rank_num << ddr_module_32gb[Rank].module_position) | index;
+//     return module_addr;
+// }
+
 __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
 {
     __uint64_t module_addr = 0;
     module_addr = (p_file_info->mem_core_num << ddr_module_32gb[MemCore].module_position)
-    | (p_file_info->rank_num << ddr_module_32gb[Rank].module_position) | index;
+    | (p_file_info->rank_num << ddr_module_32gb[Rank].module_position) | ((index & (0x3c000000) << 1) | (index & (0x3ffffff)));
     return module_addr;
 }
 
@@ -362,7 +371,7 @@ f_save:     p_file_info->increasing = false;
             goto f_save;
         }
         if(p_file_info->byte_writed_num == (data_save_num)) {
-            ret_no = -2;
+            ret_no = -1;
             goto f_save;
         }
         if(mem_index == (DDR_MEMCORE_INDEX_MAX - 1)) {

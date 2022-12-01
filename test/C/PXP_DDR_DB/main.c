@@ -252,17 +252,18 @@ int main(int argc, char** argv) {
                         // memcore_index = 0x101FFFFe;
                         memcore_index = 0;
                         __uint64_t mem_save_bytes = mem_save_data_num_get(p_file_info);
-                        do{
-                            int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index, mem_save_bytes);
-                            p_file_info = (p_out_file_list->head) ? (struct FILE_INFO *)(p_out_file_list->head->data) : p_file_info;
-                            if(ret == -1){
-                                break;
-                            } else if (ret == -2)
-                            {
-                                goto done;
-                            }
-                            
-                        } while(++memcore_index < DDR_MEMCORE_INDEX_MAX);
+                        if (mem_save_bytes) {
+                            do{
+                                int ret = memcore_file_create(p_out_file_list, p_file_info, memcore_index, mem_save_bytes);
+                                p_file_info = (p_out_file_list->head) ? (struct FILE_INFO *)(p_out_file_list->head->data) : p_file_info;
+                                if(ret == -1){
+                                    break;
+                                } else if (ret == -2)
+                                {
+                                    goto done;
+                                }
+                            } while(++memcore_index < DDR_MEMCORE_INDEX_MAX);
+                        }
                     }
                 }
             }
