@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 int uint16_vhx_create()
 {
     #define TEST_BYTE_NUM 256
@@ -71,14 +72,21 @@ union uint32_char
     char bytes[4];
 };
 
-int main(void)
+int main(int argc, char** argv)
 {
     union uint32_char temp;
     __uint64_t i = 0;
     __uint64_t file_size = 4*1024ul*1024ul*1024ul;
     char *bin_file_name = "sequence.bin";
+
+    char filename[100] = {0};
+    if (argc > 1) {
+        strcpy(filename, argv[2]);
+        bin_file_name = filename;    
+        file_size = strtoul(argv[1], NULL, 0);
+    }
+    printf("bin file name: %s size:%#lx\n", bin_file_name, file_size);
     FILE *p_file = fopen(bin_file_name, "wb");
-    printf("bin file size:%#lx\n", file_size);
     for (i = 0; i < file_size/4; i++) {
         temp.data = i * sizeof(__uint32_t);
         fwrite(temp.bytes, sizeof(char), sizeof(__uint32_t), p_file);
