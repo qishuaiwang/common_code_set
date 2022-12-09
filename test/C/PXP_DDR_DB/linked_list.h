@@ -62,6 +62,8 @@ void list_remove(linkedlist *list, const void *data, void **element,
 int list_contains(linkedlist *list, const void *data, 
 		int (*compare)(const void *key1, const void *key2));
 
+int list_consistent_item_get(void **item, linkedlist *list, const void *data, 
+			int (*consistent)(const void *key1, const void *key2));
 /*
  * Return the size of the list
  *

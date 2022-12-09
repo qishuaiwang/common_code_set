@@ -12,6 +12,37 @@ char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pw
 char *file_string = " -file %s/DDRsys%d_rank%d_chan%s_memcore%d_%d -start %#010x\n";
 char *file_name = "DDRsys%d_rank%d_chan%s_memcore%d_%d";
 
+/* file info create */
+void free_data(void *useless_data)
+{
+    struct FILE_INFO *tmp = useless_data;
+    free(tmp);
+}
+
+int equals(const void *x, const void *y) {
+    struct FILE_INFO *a = (struct FILE_INFO *)x;
+    struct FILE_INFO *b = (struct FILE_INFO *)y;
+    return  a->sys_num == b->sys_num &&
+            a->rank_num == b->rank_num &&
+            a->mem_core_num == b->mem_core_num &&
+            a->ch_name == b->ch_name &&
+            a->start_offset == b->start_offset &&
+            a->index == b->index &&
+            a->increasing == b->increasing;
+}
+
+int consistents(const void *x, const void *y)
+{
+    struct FILE_INFO *a = (struct FILE_INFO *)x;
+    struct FILE_INFO *b = (struct FILE_INFO *)y;
+    int ret = 0;
+    if (a->sys_num == b->sys_num &&
+            a->rank_num == b->rank_num &&
+            a->mem_core_num == b->mem_core_num &&
+            (!strcmp(a->ch_name, b->ch_name)))
+    ret = (a->start_offset == (b->end_offset + 1)) || (b->start_offset == (a->end_offset + 1));
+    return ret;
+}
 /* DDR address in SOC map */
 __uint64_t ddr_sys_base_addr[2][DDR_SYS_NUM] = {
     {0x3000000000, 0x3400000000, 0x3800000000, 0x3c00000000, 0x4000000000, 0x4400000000}, // none interleave space
@@ -55,7 +86,7 @@ __uint64_t ddr_sys_base_addr[2][DDR_SYS_NUM] = {
 /* Do not change the sequence, or result will wrong. */
 /*****************************************************/
 #ifndef DDR_MODULE_ADDR_RBC
-struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
+struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GB_BIT_NUM] = {
     // {"CH" ,  -1,  -1,  1,  0},
     {"B0" ,  0,  0,  2,  0},
     {"B1" ,  1,  1,  3,  0},
@@ -96,7 +127,7 @@ struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     // {"MemCore", 27, 27, 29,  0},
     // {"Rank", 28, 28, 30,  0},
 };
-_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GBIT_BIT_NUM,
+_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GB_BIT_NUM,
                 "Please make sure array size not over defined.");
 enum data_repackage_index
 {
@@ -140,14 +171,14 @@ int hif_addr_update (__uint32_t *addrmap)
     ddr_module_32gb[C1].hif_position = (0x3f == GET_ADDRMAP_COL_B5(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B5(addrmap[4]) + 5;
     ddr_module_32gb[C0].hif_position = (0x3f == GET_ADDRMAP_COL_B4(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B4(addrmap[4]) + 4;
     ddr_module_32gb[B3].hif_position = (0x3f == GET_ADDRMAP_COL_B3(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B3(addrmap[4]) + 3;
-    for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
+    for (i = 0; i < DDR_MODULE_32GB_BIT_NUM; i++) {
         printf("%s : module: %#08x hif: %#08x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].module_position, ddr_module_32gb[i].hif_position);
     }
     return 0;
 }
 
 #else
-struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
+struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GB_BIT_NUM] = {
     // {"CH" ,  -1,  -1,  1,  0},
     {"B0" ,  0,  0,  2,  0},
     {"B1" ,  1,  1,  3,  0},
@@ -182,7 +213,7 @@ struct MODULE_BIT_INFO ddr_module_32gb[DDR_MODULE_32GBIT_BIT_NUM] = {
     {"MemCore", 30, 30, 32,  0},
     {"Rank", 31, 31, 33,  0},
 };
-_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GBIT_BIT_NUM,
+_Static_assert(sizeof(ddr_module_32gb)/sizeof(ddr_module_32gb[0]) <= DDR_MODULE_32GB_BIT_NUM,
                 "Please make sure array size not over defined.");
 enum data_repackage_index
 {
@@ -223,7 +254,7 @@ int hif_addr_update (__uint32_t *addrmap)
     ddr_module_32gb[C1].hif_position = (0x3f == GET_ADDRMAP_COL_B5(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B5(addrmap[4]) + 5;
     ddr_module_32gb[C0].hif_position = (0x3f == GET_ADDRMAP_COL_B4(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B4(addrmap[4]) + 4;
     ddr_module_32gb[B3].hif_position = (0x3f == GET_ADDRMAP_COL_B3(addrmap[4])) ? 0x3f : GET_ADDRMAP_COL_B3(addrmap[4]) + 3;
-    for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
+    for (i = 0; i < DDR_MODULE_32GB_BIT_NUM; i++) {
         printf("%s : module: %#08x hif: %#08x\n", ddr_module_32gb[i].bit_name, ddr_module_32gb[i].module_position, ddr_module_32gb[i].hif_position);
     }
     return 0;
@@ -238,7 +269,7 @@ __uint64_t addr_module_to_hif (__uint64_t module_addr)
     __uint32_t i = 0;
     __uint64_t bit_value = 0;
 
-    for (i = 0; i < DDR_MODULE_32GBIT_BIT_NUM; i++) {
+    for (i = 0; i < DDR_MODULE_32GB_BIT_NUM; i++) {
         bit_value = BIT_GET(module_addr, ddr_module_32gb[i].module_position);
         hif_addr.addr |= (bit_value << ddr_module_32gb[i].hif_position);
     }
@@ -283,6 +314,160 @@ __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
     return module_addr;
 }
 
+__uint64_t addr_hif_to_module (__uint64_t hif_addr)
+{
+    union address_bits module_addr;
+    module_addr.addr = 0;
+    // module_addr.addr = 0;
+    __uint32_t i = 0;
+    __uint64_t bit_value = 0;
+
+    for (i = 0; i < DDR_MODULE_32GB_BIT_NUM; i++) {
+        bit_value = BIT_GET(hif_addr, ddr_module_32gb[i].hif_position);
+        module_addr.addr |= (bit_value << ddr_module_32gb[i].module_position);
+    }
+    return module_addr.addr;
+}
+
+/*************************************************/
+/* soc   hif     CHA     CHB   mem_line_num      */
+/* 0x0   0x0     0x0     0x2   0x0               */
+/* 0x4   0x1     0x4     0x6   0x1               */
+/* 0x8   0x2     0x8     0xa   0x2               */
+/*************************************************/
+__uint64_t addr_soc_to_modual(struct FILE_INFO *p_file_info, __uint64_t soc_addr)
+{
+    __uint64_t hif_addr = 0;
+    __uint64_t module_addr = 0;
+    __uint8_t ddr_sys = 0;
+    /* DDR SYS */
+    if (p_file_info->interleave_size) {
+        if (soc_addr < ddr_sys_base_addr[1][0] || soc_addr > ddr_sys_base_addr[1][DDR_SYS_NUM - 1]) {
+            perror("soc_address is not in interleave space!\n");
+        } else {
+            ddr_sys = DDR_SYS_NUM - (soc_addr & p_file_info->interleave_size) ? 1 : 2;
+            for (int i = 1; i < DDR_SYS_NUM; i += 2) {
+                if (soc_addr < ddr_sys_base_addr[1][i]) {
+                    ddr_sys = i - (soc_addr & p_file_info->interleave_size) ? 0 : 1;
+                    break;
+                }
+            }
+        }
+    } else {
+        if (soc_addr < ddr_sys_base_addr[0][0] || soc_addr > ddr_sys_base_addr[0][DDR_SYS_NUM - 1]) {
+            perror("soc_address is not correct!\n");
+        } else {
+            ddr_sys = DDR_SYS_NUM - 1;
+            for (int i = 1; i < DDR_SYS_NUM; i++) {
+                if (soc_addr < ddr_sys_base_addr[0][i]) {
+                    ddr_sys = i - 1;
+                    break;
+                }
+            }
+        }
+    }
+    p_file_info->sys_num = ddr_sys;
+    /* soc_addr & 0x3 */
+    /* 0/1 channel A */
+    /* 2/3 channel B */
+    char *ch = p_file_info->ch_name;
+    strcpy(ch, (soc_addr & 0x2) ? "B" : "A");
+    hif_addr = soc_addr >> 2;
+    module_addr = addr_hif_to_module(hif_addr);
+    /* rank */
+    p_file_info->rank_num = (module_addr >> Rank) & 0x1;
+    /* mem_core_num */
+    p_file_info->mem_core_num = (module_addr >> MemCore) & 0x1;
+    /* file_index */
+    p_file_info->index += 1;
+    /* start_offset end_offset */
+    p_file_info->start_offset = (module_addr) & (~(0x3 << MemCore));
+    p_file_info->end_offset = p_file_info->start_offset; // size 1. end_offset == start_offset.
+    return module_addr;
+}
+
+int filecpy(const char* dest, const char* src)
+{
+	FILE* fin = fopen(src, "r");
+	FILE* fout = fopen(dest, "w");
+    char c = 0;
+
+	if (fin && fout)
+	{
+		// while (!feof(fin))//读到最后一个字符，feof（fin）仍未false
+		// {
+		// 	fputc(fgetc(fin), fout);
+		// }
+        c = fgetc(fin);
+		while (c != EOF)//读到最后一个字符，feof（fin）仍未false
+		{
+			fputc(c, fout);
+            c = fgetc(fin);
+		}
+		fclose(fin);
+		fclose(fout);
+		return 0;
+	}
+	return -1;
+}
+
+int filecat(const char* dest, const char* src)
+{
+	FILE* fin = fopen(src, "r");
+	FILE* fout = fopen(dest, "a");
+
+    char c = 0;
+	if (fin && fout)
+	{
+		// while (!feof(fin))//读到最后一个字符，feof（fin）仍未false
+        c = fgetc(fin);
+		while (c != EOF)//读到最后一个字符，feof（fin）仍未false
+		{
+			fputc(c, fout);
+            c = fgetc(fin);
+		}
+		fclose(fin);
+		fclose(fout);
+		return 0;
+	}
+	return -1;
+}
+
+__int8_t item_merge(linkedlist *p_f_list, struct FILE_INFO *data)
+{
+    void *v_item = NULL;
+    struct list_node *item = NULL;
+    __int8_t ret = -1;
+    if (p_f_list->head != NULL) {
+
+        /* if any item need merge? end_addr = start_addr - 1. */
+        if (1 == list_consistent_item_get(&v_item, p_f_list, data, consistents)) {
+            item = (struct list_node *)v_item;
+            struct FILE_INFO *a = (struct FILE_INFO *)item->data;
+            struct FILE_INFO *b = (struct FILE_INFO *)data;
+            if (a->start_offset < b->start_offset) {
+                /* file merge */
+                filecat(a->file_name, b->file_name);
+                remove(b->file_name);
+                /* item update */
+                a->end_offset = b->end_offset;
+                /* data free */
+                free_data(data);
+            } else {
+                /* file merge */
+                filecat(b->file_name, a->file_name);
+                filecpy(a->file_name, b->file_name);
+                remove(b->file_name);
+                /* item update */
+                a->start_offset = b->start_offset;
+                /* data free */
+                free_data(data);
+            }
+            ret = 0;
+        }
+    }
+    return ret;
+}
 // __uint64_t module_addr_get (struct FILE_INFO *p_file_info, __uint64_t index)
 // {
 //     __uint64_t module_addr = 0;
@@ -425,3 +610,39 @@ f_save:     p_file_info->increasing = false;
 end:
     return ret_no;
 }
+
+int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp,  __uint64_t sys_addr, __uint16_t data)
+{
+    __uint64_t module_addr = 0;
+    void *list_item =  NULL;
+    struct FILE_INFO *node =  NULL;
+    struct FILE_INFO *p_file_info = (file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
+    node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
+    memcpy(node, p_file_info, sizeof(*node));
+    module_addr = addr_soc_to_modual(node, sys_addr);
+    sprintf(node->file_name, file_name, node->sys_num,
+    node->rank_num, node->ch_name, node->mem_core_num,
+    node->index);
+    node->op_file = fopen(node->file_name, "w");
+    fprintf(node->op_file, "%04x\n", data);
+    fclose(node->op_file);
+    if(item_merge(file_list, node)) {
+        list_insert(file_list, node);
+    }else {
+        node = NULL;
+    }
+}
+
+int create_mem_load_script(linkedlist *p_list, char *file_name)
+{
+    struct list_node *list_item = NULL;
+    struct list_node *list_tmp = p_list->head;
+    int ret = 0;
+    FILE *p_file = fopen(file_name, "w");
+    while(list_tmp) {
+        create_mem_load_cmd (p_file, (struct FILE_INFO *)list_tmp->data);
+        list_tmp = list_tmp->next;
+    }
+    return ret;
+}
+

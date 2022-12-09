@@ -7,25 +7,6 @@
 #include "data_repackage.h"
 #include "cJSON.h"
 
-/* file info create */
-void free_data(void *useless_data)
-{
-    struct FILE_INFO *tmp = useless_data;
-    free(tmp);
-}
-
-int equals(const void *x, const void *y) {
-    struct FILE_INFO *a = (struct FILE_INFO *)x;
-    struct FILE_INFO *b = (struct FILE_INFO *)y;
-    return  a->sys_num == b->sys_num &&
-            a->rank_num == b->rank_num &&
-            a->mem_core_num == b->mem_core_num &&
-            a->ch_name == b->ch_name &&
-            a->start_offset == b->start_offset &&
-            a->index == b->index &&
-            a->increasing == b->increasing;
-}
-
 /* Parse a addressmp to array. */
 void parse_objects(char *filename, __uint32_t *addrmap)
 {
@@ -178,10 +159,10 @@ int main(int argc, char** argv) {
     // This debugging function prints the parser's state.
     // ap_print(parser);
 
-    // printf("Inline ecc is %d\n", ap_found(parser, "e"));
-    // printf("Input_file is %s\n", ap_str_value(parser, "input_file"));
-    // printf("Json file is %s\n", ap_str_value(parser, "json_file"));
-    // printf("Load address is %#lx\n", ap_long_value(parser, "a"));
+    printf("Inline ecc is %d\n", ap_found(parser, "e"));
+    printf("Input_file is %s\n", ap_str_value(parser, "input_file"));
+    printf("Json file is %s\n", ap_str_value(parser, "json_file"));
+    printf("Load address is %#lx\n", ap_long_value(parser, "a"));
 
     load_address = ap_long_value(parser, "a");
     input_file_name = ap_str_value(parser, "input_file");
@@ -191,6 +172,11 @@ int main(int argc, char** argv) {
         head_file_info.interleave_size = 0;
     } else {
         head_file_info.interleave_size = ap_int_value(parser, "interleave_size");
+        if (head_file_info.interleave_size != 256 &&
+            head_file_info.interleave_size != 1024 &&
+            head_file_info.interleave_size != 512) {
+                perror("Unsupport interleave size.\n");
+            }
     }
     FILE * file_tmp = fopen(input_file_name, "rb");
     __uint64_t file_byte_size;
@@ -210,6 +196,44 @@ int main(int argc, char** argv) {
     }
     head_file_info.img_start_address = load_address;
     head_file_info.img_end_address = load_address + file_byte_size - 1;
+    __uint16_t algin_size = 0x2;
+    __uint16_t algin_mask = algin_size - 1;
+    __uint8_t unalign_bytes = file_byte_size & (algin_mask);
+    if (p_file_info->iecc) {
+        algin_size = 0x40;
+        algin_mask = algin_size - 1;
+        unalign_bytes = file_byte_size & (algin_mask);
+//    } else {
+//        /* img_file format, start_addr need align 2bytes, size fill to align 2bytes */
+//        if (p_file_info->img_start_address & 0x1) {
+//            perror("Load address unsupport. The address should be 2 bytes align.\n");
+//        }
+//        if (file_byte_size & 0x1) {
+//            fclose(file_tmp);
+//            file_tmp = fopen(input_file_name, "wb");
+//            fseek(file_tmp, 0, SEEK_END);
+//            fputc('0', file_tmp);
+//            fclose(file_tmp);
+//            file_tmp = fopen(input_file_name, "rb");
+//            head_file_info.img_end_address += 1;
+//       }
+    }
+    /* img_file format, start_addr need align 64bytes, size fill to align 64bytes */
+    if (p_file_info->img_start_address & algin_mask) {
+        perror("Load address unsupport. The address should be 2 bytes align.\n");
+    }
+    if (unalign_bytes) {
+        fclose(file_tmp);
+        file_tmp = fopen(input_file_name, "wb");
+        fseek(file_tmp, 0, SEEK_END);
+        for (__uint8_t i = unalign_bytes; i < algin_mask; i++) {
+            fputc('0', file_tmp);
+        }
+        fclose(file_tmp);
+        file_tmp = fopen(input_file_name, "rb");
+        head_file_info.img_end_address += (algin_mask - unalign_bytes);
+        head_file_info.img_file = file_tmp;
+    }
     // Free the parser's memory.
     ap_free(parser);
 
@@ -235,6 +259,17 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    #if 1
+    hif_addr_update(addrmap);
+    fseek(p_file_info->img_file, 0, SEEK_SET);
+    for (__uint64_t img_file_addr = p_file_info->img_start_address; img_file_addr < p_file_info->img_end_address;
+            img_file_addr += DDR_MEMCORE_DW_BYTES){
+                __uint16_t data = 0;
+                fread(&data, 1, DDR_MEMCORE_DW_BYTES, p_file_info->img_file);
+                memcore_file_create_direct(p_out_file_list, p_file_info, img_file_addr, data);
+    }
+    create_mem_load_script(p_out_file_list, BACKDOOR_SCRIPT_FILE);
+    #else
     __uint32_t memcore_index = 0;
     hif_addr_update(addrmap);
     __uint32_t ddr_sys_set[DDR_SYS_NUM] = {0};
@@ -276,6 +311,7 @@ int main(int argc, char** argv) {
     list_destroy(p_out_file_list, free_data);
     cur_time_print();
     return 0;
+    #endif
 err:
     list_destroy(p_out_file_list, free_data);
     cur_time_print();

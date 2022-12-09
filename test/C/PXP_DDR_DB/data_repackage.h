@@ -12,7 +12,9 @@
 #define DDR_MEMCORE_SIZE 0x100000000 // 0x4_0000_0000 / 4 = 0x1_0000_0000 =2^32
 // #define DDR_MEMCORE_INDEX_MAX 0x8000
 #define DDR_MEMCORE_INDEX_MAX 0x40000000 // DDR_MEMCORE_SIZE = DDR_MEMCORE_INDEX_MAX * 2(chn) * 2(bytes)
-#define DDR_MODULE_32GBIT_BIT_NUM 32
+#define DDR_MODULE_32GB_BIT_NUM 32
+#define DDR_MEMCORE_DW 16
+#define DDR_MEMCORE_DW_BYTES (DDR_MEMCORE_DW / 8)
 
 #define BIT_GET(x,y) (((x) >> (y)) & 0x1)
 
@@ -71,12 +73,14 @@ union address_bits {
 	__uint64_t addr;
 };
 
+
 struct FILE_INFO {
     __uint8_t sys_num;
     __uint8_t rank_num;
     __uint8_t mem_core_num;
     char ch_name[2];
     __uint64_t start_offset;
+    __uint64_t end_offset;
     __uint32_t interleave_size;
     __uint32_t index;
     bool increasing;
@@ -97,8 +101,11 @@ union data_read
 };
 
 
+void free_data(void *useless_data);
 int hif_addr_update (__uint32_t *addrmap);
 int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __uint64_t index, __uint64_t data_save_num);
 __uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info);
+int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp,  __uint64_t sys_addr, __uint16_t data);
+int create_mem_load_script(linkedlist *p_list, char *file_name);
 
 #endif

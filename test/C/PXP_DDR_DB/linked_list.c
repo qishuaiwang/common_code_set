@@ -58,9 +58,28 @@ void list_insert(linkedlist *list, void *data)
 		list->head = node;
 	}
 }
+extern int equals(const void *x, const void *y);
+void list_remove_node(linkedlist *list, struct list_node *node)
+{
+	if (list_contains(list, node->data, equals)) {
+		if(list->head) {
+			struct list_node *tmp = list->head;
+			while(tmp) {
+				if (node == tmp->next) {
+					tmp->next = node->next;
+					free(node);
+					break;
+				}
+				tmp = tmp->next;
+			}
+		}
+	} else {
+		perror("This node is not contain in the lsit.\n");
+	}
+}
 
 void list_remove(linkedlist *list, const void *data, void **element, 
-					int (*compare)(void *key1, void *key2))
+					int (*equals)(void *key1, void *key2))
 {
 	
 }
@@ -74,10 +93,30 @@ int list_contains(linkedlist *list, const void *data,
 	struct list_node *tmp = list->head;
 
 	int result = -1;
-	while (tmp->next) {
+	do{
 		if ((result = equals(tmp->data, data)) == 1);
                          return result;
-	}
+		tmp = tmp->next;
+	}while (tmp);
+	return result;
+}
+
+int list_consistent_item_get(void **item, linkedlist *list, const void *data, 
+			int (*consistent)(const void *key1, const void *key2))
+{
+	if (list->head == NULL)
+		return -1;
+	
+	struct list_node *tmp = list->head;
+
+	int result = -1;
+	do{
+		if ((result = consistent(tmp->data, data)) == 1){
+			*item = tmp;
+            return result;
+		}
+		tmp = tmp->next;
+	}while (tmp);
 	return result;
 }
 
@@ -97,8 +136,9 @@ void list_print(linkedlist *list, void (*print)(void *data)) {
 	printf("list head: %p", list->head);
 	if(list->head) {
 		struct list_node *tmp = list->head;
-		while(tmp->next) {
+		while(tmp) {
 			print(tmp->data);
+			tmp = tmp->next;
 		}
 	}
 }
