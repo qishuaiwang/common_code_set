@@ -8,7 +8,7 @@
 #include "linked_list.h"
 
 char *load_string = "memory -load %%readmemh %n";
-char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr4x_8GB_rank%d.lpddr4_ch%s.memcore";
+char *hieraych_string = "u_sigi_top.u_digital_top.u_ddr_blob.u_ddr_subsys_top_pwr_wrap%d.u_ddr_subsys_top_wrap.u_ddr_sys_top.u_DWC_ddr.ddrphy.u_dwc_ddrphy_top.u_lpddr4x_8GB_rank%d_chan_AB.lpddr4_ch%s.memcore";
 char *file_string = " -file %s/DDRsys%d_rank%d_chan%s_memcore_%d -start %#010x\n";
 char *file_name = "DDRsys%d_rank%d_chan%s_memcore_%d";
 
