@@ -122,6 +122,7 @@ int main(int argc, char** argv) {
     linkedlist *p_out_file_list = &out_file_list;
     list_init(&p_out_file_list);
 
+    // ProfilerStart("test.prof");
     cur_time_print();
     // Instantiate a new ArgParser instance.
     ArgParser* parser = ap_new();
@@ -313,7 +314,9 @@ int main(int argc, char** argv) {
     return 0;
     #endif
 err:
+    fclose(head_file_info.img_file);
     list_destroy(p_out_file_list, free_data);
     cur_time_print();
+    // ProfilerStop();
     return err_no;
 }

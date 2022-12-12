@@ -433,6 +433,33 @@ int filecat(const char* dest, const char* src)
 	return -1;
 }
 
+int file_insert(const char* dest, __uint16_t data)
+{
+    char *tmp = "tmp_file";
+	FILE* f_tmp = fopen(tmp, "w");
+    fwrite(&data, 1, DDR_MEMCORE_DW_BYTES, f_tmp);
+    fclose(f_tmp);
+    if(0 == filecat(tmp, dest)) {
+        remove(dest);
+        rename(tmp, dest);
+        return 0;
+    }
+	return -1;
+}
+
+int file_append(const char* dest, __uint16_t data)
+{
+	FILE* fout = fopen(dest, "a");
+
+	if (fout)
+	{
+        fwrite(&data, 1, DDR_MEMCORE_DW_BYTES, fout);
+		fclose(fout);
+		return 0;
+	}
+	return -1;
+}
+
 __int8_t item_merge(linkedlist *p_f_list, struct FILE_INFO *data)
 {
     void *v_item = NULL;
@@ -457,6 +484,41 @@ __int8_t item_merge(linkedlist *p_f_list, struct FILE_INFO *data)
                 /* file merge */
                 filecat(b->file_name, a->file_name);
                 filecpy(a->file_name, b->file_name);
+                remove(b->file_name);
+                /* item update */
+                a->start_offset = b->start_offset;
+                /* data free */
+                free_data(data);
+            }
+            ret = 0;
+        }
+    }
+    return ret;
+}
+
+__int8_t item_join(linkedlist *p_f_list, struct FILE_INFO *data, __uint16_t value)
+{
+    void *v_item = NULL;
+    struct list_node *item = NULL;
+    __int8_t ret = -1;
+    if (p_f_list->head != NULL) {
+
+        /* if any item need merge? end_addr = start_addr - 1. */
+        if (1 == list_consistent_item_get(&v_item, p_f_list, data, consistents)) {
+            item = (struct list_node *)v_item;
+            struct FILE_INFO *a = (struct FILE_INFO *)item->data;
+            struct FILE_INFO *b = (struct FILE_INFO *)data;
+            if (a->start_offset < b->start_offset) {
+                /* file merge */
+                file_append(a->file_name, value);
+                remove(b->file_name);
+                /* item update */
+                a->end_offset = b->end_offset;
+                /* data free */
+                free_data(data);
+            } else {
+                /* file merge */
+                file_insert(a->file_name, value);
                 remove(b->file_name);
                 /* item update */
                 a->start_offset = b->start_offset;
@@ -623,12 +685,20 @@ int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp
     sprintf(node->file_name, file_name, node->sys_num,
     node->rank_num, node->ch_name, node->mem_core_num,
     node->index);
-    node->op_file = fopen(node->file_name, "w");
-    fprintf(node->op_file, "%04x\n", data);
-    fclose(node->op_file);
-    if(item_merge(file_list, node)) {
+//    node->op_file = fopen(node->file_name, "w");
+//    fprintf(node->op_file, "%04x\n", data);
+//    fclose(node->op_file);
+//    if(item_merge(file_list, node)) {
+//        list_insert(file_list, node);
+//    }else {
+//        node = NULL;
+//    }
+    if(item_join(file_list, node, data)) {
+        node->op_file = fopen(node->file_name, "w");
+        fprintf(node->op_file, "%04x\n", data);
+        fclose(node->op_file);
         list_insert(file_list, node);
-    }else {
+    } else {
         node = NULL;
     }
 }
