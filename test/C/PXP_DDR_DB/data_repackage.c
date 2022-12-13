@@ -673,34 +673,66 @@ end:
     return ret_no;
 }
 
+struct FILE_INFO *node =  NULL;
 int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp,  __uint64_t sys_addr, __uint16_t data)
 {
     __uint64_t module_addr = 0;
     void *list_item =  NULL;
-    struct FILE_INFO *node =  NULL;
+    struct FILE_INFO *node_tmp =  NULL;
     struct FILE_INFO *p_file_info = (file_list->head) ? (struct FILE_INFO *)(file_list->head->data) : file_tmp;
-    node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
-    memcpy(node, p_file_info, sizeof(*node));
-    module_addr = addr_soc_to_modual(node, sys_addr);
-    sprintf(node->file_name, file_name, node->sys_num,
-    node->rank_num, node->ch_name, node->mem_core_num,
-    node->index);
-//    node->op_file = fopen(node->file_name, "w");
-//    fprintf(node->op_file, "%04x\n", data);
-//    fclose(node->op_file);
-//    if(item_merge(file_list, node)) {
-//        list_insert(file_list, node);
-//    }else {
-//        node = NULL;
-//    }
-    if(item_join(file_list, node, data)) {
-        node->op_file = fopen(node->file_name, "w");
-        fprintf(node->op_file, "%04x\n", data);
-        fclose(node->op_file);
-        list_insert(file_list, node);
+    node_tmp = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
+    memcpy(node_tmp, p_file_info, sizeof(*node_tmp));
+    module_addr = addr_soc_to_modual(node_tmp, sys_addr);
+    sprintf(node_tmp->file_name, file_name, node_tmp->sys_num,
+    node_tmp->rank_num, node_tmp->ch_name, node_tmp->mem_core_num,
+    node_tmp->index);
+    if (__glibc_likely(node)) {
+        node->increasing = consistents(node, node_tmp);
+        if (__glibc_likely(node->increasing)) {
+            /* Add new data to node */
+            fprintf(node->op_file, "%04x\n", data);
+            node->end_offset++;
+            free_data(node_tmp);
+        } else {
+            fclose(node->op_file);
+            if(__glibc_unlikely(item_merge(file_list, node))) {
+                list_insert(file_list, node);
+            }else {
+                node = NULL;
+            }
+
+            /* Create new node */
+            // node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
+            // memcpy(node, p_file_info, sizeof(*node));
+            node = node_tmp;
+            // module_addr = addr_soc_to_modual(node, sys_addr);
+            // sprintf(node->file_name, file_name, node->sys_num,
+            // node->rank_num, node->ch_name, node->mem_core_num,
+            // node->index);
+            node->op_file = fopen(node->file_name, "w");
+            fprintf(node->op_file, "%04x\n", data);
+        }
     } else {
-        node = NULL;
+            node = node_tmp;
+            node->op_file = fopen(node->file_name, "w");
+            fprintf(node->op_file, "%04x\n", data);
     }
+    if (__glibc_unlikely(sys_addr + DDR_MEMCORE_DW_BYTES > node->img_end_address)) {
+        fclose(node->op_file);
+        if(item_merge(file_list, node)) {
+            list_insert(file_list, node);
+        }else {
+            node = NULL;
+        }
+    }
+    // if(item_join(file_list, node, data)) {
+    //     node->op_file = fopen(node->file_name, "w");
+    //     fprintf(node->op_file, "%04x\n", data);
+    //     fclose(node->op_file);
+    //     list_insert(file_list, node);
+    // } else {
+    //     node = NULL;
+    // }
 }
 
 int create_mem_load_script(linkedlist *p_list, char *file_name)

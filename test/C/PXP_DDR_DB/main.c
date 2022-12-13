@@ -107,6 +107,13 @@ void cur_time_print(void)
     timeinfo = localtime (&rawtime);
     printf ("Current local time and date: %s", asctime(timeinfo));
 }
+union tmp_data
+{
+    /* data */
+    __uint32_t data_32;
+    __uint16_t data_16;
+};
+union tmp_data data_tmp = {0};
 
 int main(int argc, char** argv) {
     int err_no = 0;
@@ -122,7 +129,7 @@ int main(int argc, char** argv) {
     linkedlist *p_out_file_list = &out_file_list;
     list_init(&p_out_file_list);
 
-    // ProfilerStart("test.prof");
+    ProfilerStart("test.prof");
     cur_time_print();
     // Instantiate a new ArgParser instance.
     ArgParser* parser = ap_new();
@@ -264,10 +271,15 @@ int main(int argc, char** argv) {
     hif_addr_update(addrmap);
     fseek(p_file_info->img_file, 0, SEEK_SET);
     for (__uint64_t img_file_addr = p_file_info->img_start_address; img_file_addr < p_file_info->img_end_address;
-            img_file_addr += DDR_MEMCORE_DW_BYTES){
-                __uint16_t data = 0;
-                fread(&data, 1, DDR_MEMCORE_DW_BYTES, p_file_info->img_file);
-                memcore_file_create_direct(p_out_file_list, p_file_info, img_file_addr, data);
+            img_file_addr += (DDR_MEMCORE_DW_BYTES * 2)){
+                fread(&data_tmp, 1, DDR_MEMCORE_DW_BYTES * 2, p_file_info->img_file);
+                memcore_file_create_direct(p_out_file_list, p_file_info, img_file_addr, data_tmp.data_16);
+    }
+    fseek(p_file_info->img_file, DDR_MEMCORE_DW_BYTES, SEEK_SET);
+    for (__uint64_t img_file_addr = p_file_info->img_start_address + DDR_MEMCORE_DW_BYTES; img_file_addr < p_file_info->img_end_address;
+            img_file_addr += (DDR_MEMCORE_DW_BYTES * 2)){
+                fread(&data_tmp, 1, DDR_MEMCORE_DW_BYTES * 2, p_file_info->img_file);
+                memcore_file_create_direct(p_out_file_list, p_file_info, img_file_addr, data_tmp.data_16);
     }
     create_mem_load_script(p_out_file_list, BACKDOOR_SCRIPT_FILE);
     #else
@@ -317,6 +329,6 @@ err:
     fclose(head_file_info.img_file);
     list_destroy(p_out_file_list, free_data);
     cur_time_print();
-    // ProfilerStop();
+    ProfilerStop();
     return err_no;
 }
