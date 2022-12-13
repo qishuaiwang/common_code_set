@@ -379,7 +379,7 @@ __uint64_t addr_soc_to_modual(struct FILE_INFO *p_file_info, __uint64_t soc_addr
     /* mem_core_num */
     p_file_info->mem_core_num = (module_addr >> MemCore) & 0x1;
     /* file_index */
-    p_file_info->index += 1;
+    // p_file_info->index += 1;
     /* start_offset end_offset */
     p_file_info->start_offset = (module_addr) & (~(0x3 << MemCore));
     p_file_info->end_offset = p_file_info->start_offset; // size 1. end_offset == start_offset.
@@ -492,6 +492,62 @@ __int8_t item_merge(linkedlist *p_f_list, struct FILE_INFO *data)
             }
             ret = 0;
         }
+    }
+    return ret;
+}
+
+__int8_t list_merge(linkedlist *p_f_list, struct list_node *src_list_item)
+{
+    void *v_item = NULL;
+    void *data = src_list_item->data;
+    struct list_node *item = NULL;
+    __int8_t ret = -1;
+    if (__glibc_unlikely(p_f_list->head != NULL)) {
+
+        /* if any item need merge? end_addr = start_addr - 1. */
+        if (1 == list_consistent_item_get(&v_item, p_f_list, data, consistents)) {
+            item = (struct list_node *)v_item;
+            struct FILE_INFO *a = (struct FILE_INFO *)item->data;
+            struct FILE_INFO *b = (struct FILE_INFO *)data;
+            if (a->start_offset < b->start_offset) {
+                /* file merge */
+                filecat(a->file_name, b->file_name);
+                // remove(b->file_name);
+                /* item update */
+                a->end_offset = b->end_offset;
+                /* list remove */
+                // list_remove_node(p_f_list, src_list_item);
+            } else {
+                /* file merge */
+                filecat(b->file_name, a->file_name);
+                filecpy(a->file_name, b->file_name);
+                // remove(b->file_name);
+                /* item update */
+                a->start_offset = b->start_offset;
+                /* list remove */
+                // list_remove_node(p_f_list, src_list_item);
+            }
+                remove(b->file_name);
+                /* list remove */
+                list_remove_node(p_f_list, src_list_item);
+            ret = 0;
+        }
+    }
+    return ret;
+}
+
+__int8_t list_item_merge(linkedlist *p_f_list)
+{
+    void *v_item = NULL;
+    void *data = NULL;
+    struct list_node *item = NULL;
+    struct list_node *cur_item = NULL;
+    __int8_t ret = -1;
+    cur_item = p_f_list->head;
+    while(cur_item != NULL){
+        item = cur_item;
+        cur_item = cur_item->next;
+        list_merge(p_f_list, item);
     }
     return ret;
 }
@@ -683,10 +739,10 @@ int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp
     node_tmp = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
     memcpy(node_tmp, p_file_info, sizeof(*node_tmp));
     module_addr = addr_soc_to_modual(node_tmp, sys_addr);
-    sprintf(node_tmp->file_name, file_name, node_tmp->sys_num,
-    node_tmp->rank_num, node_tmp->ch_name, node_tmp->mem_core_num,
-    node_tmp->index);
-    if (__glibc_likely(node)) {
+    // sprintf(node_tmp->file_name, file_name, node_tmp->sys_num,
+    // node_tmp->rank_num, node_tmp->ch_name, node_tmp->mem_core_num,
+    // node_tmp->index);
+    if (__glibc_likely(NULL != node)) {
         node->increasing = consistents(node, node_tmp);
         if (__glibc_likely(node->increasing)) {
             /* Add new data to node */
@@ -694,26 +750,29 @@ int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp
             node->end_offset++;
             free_data(node_tmp);
         } else {
+            node_tmp->index = 1 + node->index;
             fclose(node->op_file);
             if(__glibc_unlikely(item_merge(file_list, node))) {
                 list_insert(file_list, node);
             }else {
                 node = NULL;
             }
-
             /* Create new node */
             // node = (struct FILE_INFO *) malloc(sizeof(struct FILE_INFO));
             // memcpy(node, p_file_info, sizeof(*node));
             node = node_tmp;
             // module_addr = addr_soc_to_modual(node, sys_addr);
-            // sprintf(node->file_name, file_name, node->sys_num,
-            // node->rank_num, node->ch_name, node->mem_core_num,
-            // node->index);
+            sprintf(node->file_name, file_name, node->sys_num,
+            node->rank_num, node->ch_name, node->mem_core_num,
+            node->index);
             node->op_file = fopen(node->file_name, "w");
             fprintf(node->op_file, "%04x\n", data);
         }
     } else {
             node = node_tmp;
+            sprintf(node_tmp->file_name, file_name, node_tmp->sys_num,
+            node_tmp->rank_num, node_tmp->ch_name, node_tmp->mem_core_num,
+            node_tmp->index);
             node->op_file = fopen(node->file_name, "w");
             fprintf(node->op_file, "%04x\n", data);
     }

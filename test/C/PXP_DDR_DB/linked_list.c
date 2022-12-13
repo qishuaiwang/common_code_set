@@ -61,16 +61,23 @@ void list_insert(linkedlist *list, void *data)
 extern int equals(const void *x, const void *y);
 void list_remove_node(linkedlist *list, struct list_node *node)
 {
-	if (list_contains(list, node->data, equals)) {
+	struct list_node *list_tmp = NULL;
+	if (list_contains(&list_tmp, list, node->data, equals)) {
 		if(list->head) {
 			struct list_node *tmp = list->head;
-			while(tmp) {
-				if (node == tmp->next) {
-					tmp->next = node->next;
-					free(node);
-					break;
+			if (list_tmp == tmp) {
+				list->head = tmp->next;
+				free(list_tmp);
+
+			} else {
+				while(tmp) {
+					if (list_tmp == tmp->next) {
+						tmp->next = list_tmp->next;
+						free(list_tmp);
+						break;
+					}
+					tmp = tmp->next;
 				}
-				tmp = tmp->next;
 			}
 		}
 	} else {
@@ -84,7 +91,7 @@ void list_remove(linkedlist *list, const void *data, void **element,
 	
 }
 
-int list_contains(linkedlist *list, const void *data, 
+int list_contains(struct list_node **list_target, linkedlist *list, const void *data, 
 			int (*equals)(const void *key1, const void *key2))
 {
 	if (list->head == NULL)
@@ -94,8 +101,10 @@ int list_contains(linkedlist *list, const void *data,
 
 	int result = -1;
 	do{
-		if ((result = equals(tmp->data, data)) == 1);
-                         return result;
+		if ((result = equals(tmp->data, data)) == 1){
+			*list_target = tmp;
+            return result;
+		}
 		tmp = tmp->next;
 	}while (tmp);
 	return result;

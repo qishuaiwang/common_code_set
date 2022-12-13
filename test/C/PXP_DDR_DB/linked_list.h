@@ -37,6 +37,7 @@ void list_destroy(linkedlist *list, void (*free_data)(void *));
  */
 void list_insert(linkedlist *list, void *data);
 
+void list_remove_node(linkedlist *list, struct list_node *node);
 /*
  * Remove the data from the list. If data is NULL then the data at list head is
  * removed.
@@ -59,7 +60,7 @@ void list_remove(linkedlist *list, const void *data, void **element,
  * 
  * return: 0 if the list contains the data and -1 otherwise.
  */
-int list_contains(linkedlist *list, const void *data, 
+int list_contains(struct list_node **list_target, linkedlist *list, const void *data, 
 		int (*compare)(const void *key1, const void *key2));
 
 int list_consistent_item_get(void **item, linkedlist *list, const void *data, 

@@ -107,5 +107,6 @@ int memcore_file_create (linkedlist *file_list, struct FILE_INFO *file_tmp, __ui
 __uint64_t mem_save_data_num_get(struct FILE_INFO *p_file_info);
 int memcore_file_create_direct(linkedlist *file_list, struct FILE_INFO *file_tmp,  __uint64_t sys_addr, __uint16_t data);
 int create_mem_load_script(linkedlist *p_list, char *file_name);
+__int8_t list_item_merge(linkedlist *p_f_list);
 
 #endif

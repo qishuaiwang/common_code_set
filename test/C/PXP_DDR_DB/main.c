@@ -125,8 +125,9 @@ int main(int argc, char** argv) {
     struct FILE_INFO head_file_info = {0};
     struct FILE_INFO *p_file_info = &head_file_info;
 
-    linkedlist out_file_list = {0};
-    linkedlist *p_out_file_list = &out_file_list;
+    // linkedlist out_file_list = {0};
+    // linkedlist *p_out_file_list = &out_file_list;
+    linkedlist *p_out_file_list = NULL;
     list_init(&p_out_file_list);
 
     ProfilerStart("test.prof");
@@ -281,6 +282,7 @@ int main(int argc, char** argv) {
                 fread(&data_tmp, 1, DDR_MEMCORE_DW_BYTES * 2, p_file_info->img_file);
                 memcore_file_create_direct(p_out_file_list, p_file_info, img_file_addr, data_tmp.data_16);
     }
+    list_item_merge(p_out_file_list);
     create_mem_load_script(p_out_file_list, BACKDOOR_SCRIPT_FILE);
     #else
     __uint32_t memcore_index = 0;
