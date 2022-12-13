@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
     linkedlist *p_out_file_list = NULL;
     list_init(&p_out_file_list);
 
-    ProfilerStart("test.prof");
+    // ProfilerStart("test.prof");
     cur_time_print();
     // Instantiate a new ArgParser instance.
     ArgParser* parser = ap_new();
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
         -a, --address           soc address to load. default 0x3000000000\n\
         \n\
         example: img_backdoor_2_ddr -l 512 -i kernel.img -a 0x3800010000\n");
-    ap_set_version(parser, "SW version : 1.0");
+    ap_set_version(parser, "SW version : 2.0");
 
     // Register a flag and a string-valued and a integer-valued option.
     ap_flag(parser, "iecc e");
@@ -331,6 +331,6 @@ err:
     fclose(head_file_info.img_file);
     list_destroy(p_out_file_list, free_data);
     cur_time_print();
-    ProfilerStop();
+    // ProfilerStop();
     return err_no;
 }
